@@ -403,13 +403,7 @@ class XMLGenerator:
         nfse = etree.SubElement(root, "Nfse", versao="1.00")
         inf_nfse = etree.SubElement(nfse, "InfNfse", Id="")
 
-        # Adicionando os campos para 'Nfse'
-        #etree.SubElement(nfse, "Serie").text = dados.get("serie", "")
-        #etree.SubElement(nfse, "Tipo").text = dados.get("tipo_nfse", "1")
-        #etree.SubElement(nfse, "Status").text = dados.get("status", "1")
-
-        # Criando o bloco 'InfNfse' e seus campos internos
-        inf_nfse = etree.SubElement(root, "InfNfse")
+        # Adicionando os campos para 'InfNfse'
         etree.SubElement(inf_nfse, "Numero").text = dados.get("numero-nota-fiscal", "")
         etree.SubElement(inf_nfse, "CodigoVerificacao").text = dados.get("codigoVerificacao", "")
         etree.SubElement(inf_nfse, "DataEmissao").text = str(dados.get("dataEmissao", ""))
@@ -424,7 +418,8 @@ class XMLGenerator:
         # Dados do prestador
         prestador_servico = etree.SubElement(inf_nfse, "PrestadorServico")
         id_prestador = etree.SubElement(prestador_servico, "IdentificacaoPrestador")
-        etree.SubElement(id_prestador, "CpfCnpj").text = dados.get("cpfCnpjPrestador")
+        cpf_cnpj_prestador = etree.SubElement(id_prestador, "CpfCnpj")
+        etree.SubElement(cpf_cnpj_prestador, "Cnpj").text = dados.get("cpfCnpjPrestador")
         etree.SubElement(id_prestador, "InscricaoMunicipal").text = dados.get("inscricaoMunicipalPrestador", "")
         etree.SubElement(prestador_servico, "RazaoSocial").text = dados.get("razaoSocialPrestador")
         etree.SubElement(prestador_servico, "NomeFantasia").text = dados.get("nomeFantasiaPrestador")
@@ -434,67 +429,41 @@ class XMLGenerator:
         etree.SubElement(endereco_prestador, "Endereco").text = dados.get("enderecoPrestador")
         etree.SubElement(endereco_prestador, "Numero").text = str(dados.get("numeroPrestador"))
         etree.SubElement(endereco_prestador, "Bairro").text = dados.get("bairroPrestador")
-        etree.SubElement(endereco_prestador, 'CodigoMunicipio').text = str(dados.get("municipioPrestacaoServico", ""))
+        etree.SubElement(endereco_prestador, "CodigoMunicipio").text = str(dados.get("municipioPrestacaoServico", ""))
         etree.SubElement(endereco_prestador, "CodigoPais").text = str(dados.get("codigoPais", "1058"))
         etree.SubElement(endereco_prestador, "Cep").text = dados.get("cepPrestador")
-        #etree.SubElement(endereco_prestador, "Complemento").text = dados.get("complemento")
-        contato_prestador = etree.SubElement(prestador_servico, 'Contato')
-        etree.SubElement(contato_prestador, 'Telefone').text = dados.get("telefonePrestador")
-        etree.SubElement(contato_prestador, 'Email').text = dados.get("emailPrestador")
+
+        # Contato do prestador
+        contato_prestador = etree.SubElement(prestador_servico, "Contato")
+        etree.SubElement(contato_prestador, "Telefone").text = dados.get("telefonePrestador")
+        etree.SubElement(contato_prestador, "Email").text = dados.get("emailPrestador")
 
         # Orgão Gerador
         orgao_gerador = etree.SubElement(inf_nfse, "OrgaoGerador")
-        etree.SubElement(orgao_gerador, "CodigodoMunicipio").text = str(dados.get("municipioPrestacaoServico", ""))
+        etree.SubElement(orgao_gerador, "CodigoMunicipio").text = str(dados.get("municipioPrestacaoServico", ""))
         etree.SubElement(orgao_gerador, "Uf").text = dados.get("ufPrestador")
 
         # Declaração de Prestação de Serviço
         declaracao_prestacao_servico = etree.SubElement(inf_nfse, "DeclaracaoPrestacaoServico")
         inf_declaracao_prestacao_servico = etree.SubElement(declaracao_prestacao_servico, "InfDeclaracaoPrestacaoServico")
-        inf_declaracao_prestacao_servico.text = dados.get("inf_declaracao_prestacao_servico", "")
         etree.SubElement(inf_declaracao_prestacao_servico, "Competencia").text = dados.get("competencia", "")
 
         # Serviço
         servico = etree.SubElement(inf_declaracao_prestacao_servico, "Servico")
-        etree.SubElement(servico, "CodigoMunicipio").text = dados.get('CodigoMunicipio', "")
-        etree.SubElement(servico, "Discriminacao").text = dados.get("Discriminacao")
-        etree.SubElement(servico, "ExigibilidadeISS").text = str(dados.get("exigibilidade_iss", ""))
-        etree.SubElement(servico, "IssRetido").text = str(dados.get("iss_retido", "0,00"))
+        valores_servico = etree.SubElement(servico, "Valores")
+        etree.SubElement(valores_servico, "ValorServicos").text = str(dados.get("valorServicos"))
+        etree.SubElement(valores_servico, "ValorDeducoes").text = str(dados.get("deducoes", "0.00"))
+        etree.SubElement(valores_servico, "ValorIr").text = str(dados.get("impostoRenda", "0.00"))
+        etree.SubElement(valores_servico, "ValorIss").text = str(dados.get("valorIss", "0.00"))
+        etree.SubElement(valores_servico, "Aliquota").text = str(dados.get("aliquota"))
+        etree.SubElement(servico, "IssRetido").text = str(dados.get("iss_retido", ""))
         etree.SubElement(servico, "ItemListaServico").text = dados.get("item_lista_servico", "")
-
-        # Valores do serviço
-        valores = etree.SubElement(servico, "Valores")
-        etree.SubElement(valores, 'ValorServicos').text = str(dados.get("valorServicos"))
-        etree.SubElement(valores, "ValorDeducoes").text = str(dados.get("deducoes", "0,00"))
-        etree.SubElement(valores, "ValorPis").text = str(dados.get("pis", "0,00"))
-        etree.SubElement(valores, "ValorCofins").text = str(dados.get("cofins", "0,00"))
-        etree.SubElement(valores, "ValorInss").text = str(dados.get("valorInss", "0,00"))
-        etree.SubElement(valores, "ValorIr").text = str(dados.get("impostoRenda", "0,00"))
-        etree.SubElement(valores, "ValorCsll").text = str(dados.get("csll", "0,00"))
-        etree.SubElement(valores, "OutrasRetencoes").text = str(dados.get("outras_retencoes", "0,00"))
-        etree.SubElement(valores, "ValorIss").text = str(dados.get("valorIss", "0,00"))
-        etree.SubElement(valores, "Aliquota").text = str(dados.get("aliquota"))
-        etree.SubElement(valores, "DescontoIncondicionado").text = str(dados.get("desconto_incondicionado", '0.00'))
-        etree.SubElement(valores, "DescontoCondicionado").text = str(dados.get("descIncondicional", "0,00"))
-
-        # Tomador de serviço
-        tomador_servico = etree.SubElement(inf_declaracao_prestacao_servico, "TomadorServico")
-        id_tomador = etree.SubElement(tomador_servico, "IdentificacaoTomador")
-        etree.SubElement(id_tomador, "CpfCnpj").text = dados.get("cpfCnpjTomador", "")
-        endereco_tomador = etree.SubElement(tomador_servico, "Endereco")
-        etree.SubElement(endereco_tomador, "Endereco").text = dados.get("enderecoTomador", "")
-        etree.SubElement(endereco_tomador, "Numero").text = dados.get("numeroTomador", "")
-        etree.SubElement(endereco_tomador, "Bairro").text = dados.get("bairroTomador", "")
-        etree.SubElement(endereco_tomador, "Complemento").text = dados.get("complementoTomador", "")
-        etree.SubElement(endereco_tomador, "Cep").text = dados.get("cepTomador", "")
-
-        # RPS
-        rps = etree.SubElement(inf_declaracao_prestacao_servico, "Rps")
-        identificacao_rps = etree.SubElement(rps, "IdentificacaoRps")
-        etree.SubElement(identificacao_rps, "Numero").text = dados.get("numeroRps")
-        etree.SubElement(identificacao_rps, "Serie").text = dados.get("serieRps")
-        etree.SubElement(identificacao_rps, "Tipo").text = str(dados.get("tipo_recolhimento", ""))
-        etree.SubElement(identificacao_rps, "DataEmissaoRps").text = dados.get("dataEmissaoRps")
-        etree.SubElement(identificacao_rps, "Status").text = str(dados.get("status_rps", ""))
+        etree.SubElement(servico, "CodigoCnae").text = dados.get("codigo_cnae", "")
+        etree.SubElement(servico, "Discriminacao").text = dados.get("discriminacao", "")
+        etree.SubElement(servico, "CodigoMunicipio").text = str(dados.get("municipioPrestacaoServico", ""))
+        etree.SubElement(servico, "CodigoPais").text = str(dados.get("codigoPais", "1058"))
+        etree.SubElement(servico, "ExigibilidadeISS").text = str(dados.get("exigibilidade_iss", ""))
+        etree.SubElement(servico, "MunicipioIncidencia").text = str(dados.get("municipioPrestacaoServico", ""))
 
         # Gerando o XML em formato string
         xml_str = etree.tostring(root, pretty_print=True, encoding="UTF-8").decode("utf-8")
