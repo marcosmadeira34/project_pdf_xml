@@ -398,18 +398,10 @@ class XMLGenerator:
     def gerar_xml_abrasf(cls, dados: Dict) -> str:
         print(f"Dados recebidos para geração do XML: {json.dumps(dados, indent=4, ensure_ascii=False)}")
 
-        """Gera um arquivo XML padrão ABRASF"""
-        # Criando o elemento root
-        root = etree.Element("ConsultarNfseFaixaResposta", nsmap=cls.nsmap)
-
-        # Criando o bloco 'ListaNfse'
-        lista_nfse = etree.SubElement(root, "ListaNfse")
-
-        # Criando o bloco 'CompNfse'
-        comp_nfse = etree.SubElement(lista_nfse, "CompNfse")
-
-        # Criando o bloco 'Nfse' e seus campos internos
-        nfse = etree.SubElement(comp_nfse, "Nfse")
+        # Criação dos elementos principais
+        root = etree.Element("CompNfse", xmlns="http://www.abrasf.org.br/nfse.xsd")
+        nfse = etree.SubElement(root, "Nfse", versao="1.00")
+        inf_nfse = etree.SubElement(nfse, "InfNfse", Id="")
 
         # Adicionando os campos para 'Nfse'
         etree.SubElement(nfse, "Serie").text = dados.get("serie", "")
