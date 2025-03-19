@@ -459,7 +459,7 @@ class XMLGenerator:
         etree.SubElement(servico, "IssRetido").text = str(dados.get("iss_retido", ""))
         etree.SubElement(servico, "ItemListaServico").text = dados.get("item_lista_servico", "")
         etree.SubElement(servico, "CodigoCnae").text = dados.get("codigo_cnae", "")
-        etree.SubElement(servico, "Discriminacao").text = dados.get("discriminacao", "")
+        etree.SubElement(servico, "Discriminacao").text = dados.get("Discriminacao", "")
         etree.SubElement(servico, "CodigoMunicipio").text = str(dados.get("municipioPrestacaoServico", ""))
         etree.SubElement(servico, "CodigoPais").text = str(dados.get("codigoPais", "1058"))
         etree.SubElement(servico, "ExigibilidadeISS").text = str(dados.get("exigibilidade_iss", ""))
