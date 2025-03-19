@@ -6,6 +6,7 @@ cachetools==5.5.2
 certifi==2025.1.31
 charset-normalizer==3.4.1
 click==8.1.8
+dj-database-url==2.3.0
 Django==5.1.7
 django-cors-headers==4.7.0
 gitdb==4.0.12
@@ -32,6 +33,7 @@ pandas==2.2.3
 pillow==11.1.0
 proto-plus==1.26.0
 protobuf==5.29.3
+psycopg2-binary==2.9.10
 pyarrow==19.0.1
 pyasn1==0.6.1
 pyasn1_modules==0.4.1
