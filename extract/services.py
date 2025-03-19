@@ -8,6 +8,7 @@ from lxml import etree
 from typing import Dict, Optional
 import base64
 import re
+from datetime import datetime
 
 # carrega as variáveis de ambiente
 load_dotenv()
@@ -411,7 +412,17 @@ class XMLGenerator:
 
 
         etree.SubElement(inf_nfse, "CodigoVerificacao").text = codigo_verificacao_clean
-        etree.SubElement(inf_nfse, "DataEmissao").text = str(dados.get("dataEmissao", ""))
+        data_emissao = str(dados.get("dataEmissao", ""))
+
+        # Converte a data para o formato desejado
+        try:
+            data_emissao_obj = datetime.strptime(data_emissao, "%d/%m/%Y")  # Parse da data original
+            data_emissao_formatada = data_emissao_obj.strftime("%Y-%m-%dT00:00:00")  # Formato desejado
+        except ValueError:
+            data_emissao_formatada = ""
+
+        # Agora você pode usar a data formatada
+        etree.SubElement(inf_nfse, "DataEmissao").text = data_emissao_formatada
 
         # Valores da NFS-e
         valores_nfse = etree.SubElement(inf_nfse, "ValoresNfse")
@@ -491,11 +502,32 @@ class XMLGenerator:
         servico = etree.SubElement(inf_declaracao_prestacao_servico, "Servico")
         valores_servico = etree.SubElement(servico, "Valores")
         etree.SubElement(valores_servico, "ValorServicos").text = re.sub(r'[^\d.,]', '', str(dados.get("valorServicos", "")))
-        etree.SubElement(valores_servico, "ValorDeducoes").text = re.sub(r'[^\d.,]', '', str(dados.get("deducoes", "0.00")))
-        etree.SubElement(valores_servico, "ValorIr").text = re.sub(r'[^\d.,]', '', str(dados.get("impostoRenda", "0.00")))
-        etree.SubElement(valores_servico, "ValorIss").text = re.sub(r'[^\d.,]', '', str(dados.get("valorIss", "0.00")))
-        etree.SubElement(valores_servico, "Aliquota").text = re.sub(r'[^\d.,]', '', str(dados.get("aliquota", "")))
-        etree.SubElement(servico, "IssRetido").text = re.sub(r'[^\d.,]', '', str(dados.get("iss_retido", "")))
+        
+        valor_deducoes = str(dados.get("deducoes", "0.00"))
+        # Remove o ponto de milhar e substitui a vírgula por ponto
+        valor_deducoes_formatado = valor_deducoes.replace('.', '').replace(',', '.')
+        etree.SubElement(valores_servico, "ValorDeducoes").text = valor_deducoes_formatado
+        
+        valor_ir = str(dados.get("impostoRenda", "0.00"))
+        # Remove o ponto de milhar e substitui a vírgula por ponto
+        valor_ir_formatado = valor_ir.replace('.', '').replace(',', '.')
+        etree.SubElement(valores_servico, "ValorIr").text = valor_ir_formatado
+
+        valor_iss_servico = str(dados.get("valorIss", "0.00"))
+        # Remove o ponto de milhar e substitui a vírgula por ponto
+        valor_iss_servico_formatado = valor_iss_servico.replace('.', '').replace(',', '.')
+        etree.SubElement(valores_servico, "ValorIss").text = valor_iss_servico_formatado
+
+        aliquota_servico = str(dados.get("aliquota", ""))
+        # Remove o caractere '%' e substitui a vírgula por ponto
+        aliquota_servico_formatada = aliquota_servico.replace('%', '').replace(',', '.')
+        etree.SubElement(valores_servico, "Aliquota").text = aliquota_servico_formatada
+        
+        iss_retido = str(dados.get("iss_retido", "0.00"))
+        # Remove o ponto de milhar e substitui a vírgula por ponto
+        iss_retido_formatado = iss_retido.replace('.', '').replace(',', '.')
+        etree.SubElement(valores_servico, "IssRetido").text = iss_retido_formatado
+
         etree.SubElement(servico, "ItemListaServico").text = re.sub(r'[^\w\s]', '', dados.get("item_lista_servico", ""))
         etree.SubElement(servico, "CodigoCnae").text = re.sub(r'[^\w\s]', '', dados.get("codigo_cnae", ""))
         etree.SubElement(servico, "Discriminacao").text = dados.get("Discriminacao", "")
