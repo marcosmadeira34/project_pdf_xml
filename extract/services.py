@@ -501,31 +501,41 @@ class XMLGenerator:
         # Serviço
         servico = etree.SubElement(inf_declaracao_prestacao_servico, "Servico")
         valores_servico = etree.SubElement(servico, "Valores")
-        etree.SubElement(valores_servico, "ValorServicos").text = re.sub(r'[^\d.,]', '', str(dados.get("valorServicos", "")))
         
+        # ValorServicos
+        valor_servicos = str(dados.get("valorServicos", "0.00"))
+        valor_servicos_formatado = valor_servicos.replace(',', '.').replace(' ', '')  # Remove espaços e converte vírgulas
+        valor_servicos_formatado = "{:.2f}".format(float(valor_servicos_formatado))  # Garante 2 casas decimais
+        etree.SubElement(valores_servico, "ValorServicos").text = valor_servicos_formatado
+
+        # ValorDeducoes
         valor_deducoes = str(dados.get("deducoes", "0.00"))
-        # Remove o ponto de milhar e substitui a vírgula por ponto
-        valor_deducoes_formatado = valor_deducoes.replace('.', '').replace(',', '.')
+        valor_deducoes_formatado = valor_deducoes.replace(',', '.').replace(' ', '')  # Remove espaços e converte vírgulas
+        valor_deducoes_formatado = "{:.2f}".format(float(valor_deducoes_formatado))  # Garante 2 casas decimais
         etree.SubElement(valores_servico, "ValorDeducoes").text = valor_deducoes_formatado
-        
+
+        # ValorIr
         valor_ir = str(dados.get("impostoRenda", "0.00"))
-        # Remove o ponto de milhar e substitui a vírgula por ponto
-        valor_ir_formatado = valor_ir.replace('.', '').replace(',', '.')
+        valor_ir_formatado = valor_ir.replace(',', '.').replace(' ', '')  # Remove espaços e converte vírgulas
+        valor_ir_formatado = "{:.2f}".format(float(valor_ir_formatado))  # Garante 2 casas decimais
         etree.SubElement(valores_servico, "ValorIr").text = valor_ir_formatado
 
+        # ValorIss
         valor_iss_servico = str(dados.get("valorIss", "0.00"))
-        # Remove o ponto de milhar e substitui a vírgula por ponto
-        valor_iss_servico_formatado = valor_iss_servico.replace('.', '').replace(',', '.')
+        valor_iss_servico_formatado = valor_iss_servico.replace(',', '.').replace(' ', '')  # Remove espaços e converte vírgulas
+        valor_iss_servico_formatado = "{:.2f}".format(float(valor_iss_servico_formatado))  # Garante 2 casas decimais
         etree.SubElement(valores_servico, "ValorIss").text = valor_iss_servico_formatado
 
-        aliquota_servico = str(dados.get("aliquota", ""))
-        # Remove o caractere '%' e substitui a vírgula por ponto
-        aliquota_servico_formatada = aliquota_servico.replace('%', '').replace(',', '.')
+        # Aliquota
+        aliquota_servico = str(dados.get("aliquota", "0.00"))
+        aliquota_servico_formatada = aliquota_servico.replace(',', '.').replace(' ', '')  # Remove espaços e converte vírgulas
+        aliquota_servico_formatada = "{:.2f}".format(float(aliquota_servico_formatada))  # Garante 2 casas decimais
         etree.SubElement(valores_servico, "Aliquota").text = aliquota_servico_formatada
-        
+
+        # IssRetido
         iss_retido = str(dados.get("iss_retido", "0.00"))
-        # Remove o ponto de milhar e substitui a vírgula por ponto
-        iss_retido_formatado = iss_retido.replace('.', '').replace(',', '.')
+        iss_retido_formatado = iss_retido.replace(',', '.').replace(' ', '')  # Remove espaços e converte vírgulas
+        iss_retido_formatado = "{:.2f}".format(float(iss_retido_formatado))  # Garante 2 casas decimais
         etree.SubElement(valores_servico, "IssRetido").text = iss_retido_formatado
 
         etree.SubElement(servico, "ItemListaServico").text = re.sub(r'[^\w\s]', '', dados.get("item_lista_servico", ""))
