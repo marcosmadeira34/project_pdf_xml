@@ -186,7 +186,7 @@ class XMLGenerator:
 
 
     # XML ABRASF versão 2.04
-    @classmethod
+    #@classmethod
     # def gerar_xml_abrasf(cls, dados: Dict) -> str:
     #     print(f"Dados recebidos para geração do XML: {json.dumps(dados, indent=4, ensure_ascii=False)}")
 
