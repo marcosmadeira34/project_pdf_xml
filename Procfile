@@ -1,0 +1,1 @@
+web: gunicorn nfse_abrasf.wsgi --log-file -
