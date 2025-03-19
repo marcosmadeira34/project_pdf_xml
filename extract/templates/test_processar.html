@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversor PDF → XML</title>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            transition: background 0.3s, color 0.3s;
+        }
+        .dark-mode {
+            background-color: #222;
+            color: white;
+        }
+        .container {
+            width: 80%;
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        .dark-mode .container {
+            background: #333;
+        }
+        .container-wrapper {
+            display: flex;
+            gap: 20px;
+        }
+
+        h2 {
+            font-size: 28px;
+            margin-bottom: 20px;
+        }
+        .drop-zone {
+            width: 100%;
+            max-width: 500px;
+            border: 2px dashed #ffffff;
+            padding: 30px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin: 20px 0;
+            transition: background 0.3s;
+            display: inline-block;
+            
+        }
+        .drop-zone.dragover {
+            background: rgba(0, 123, 255, 0.1);
+        }
+
+        /* Ajustes para telas menores */
+        @media (max-width: 768px) {
+            #dropZone {
+                max-width: 90%;
+                padding: 15px;
+                border: 2px dashed #999;
+                border-radius: 8px;
+            }
+        }
+
+        .upload-btn {
+            display: inline-block; /* Mantém o tamanho do botão proporcional ao conteúdo */
+            width: auto; /* Ajusta a largura automaticamente */
+            min-width: 200px; /* Define um tamanho mínimo para evitar botões muito pequenos */
+            max-width: 300px; /* Limita o tamanho para não ficar muito largo */
+            padding: 10px 20px; /* Ajusta o espaçamento interno */
+            margin-top: 20px;
+            background: #034ff1;
+            color: white; /* Melhor contraste no texto */
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 16px;
+            text-align: center;
+        }
+        .upload-btn:hover {
+            background: #0056b3;
+        }
+        .theme-toggle {
+            position: absolute;
+            top: 10px;
+            right: 60px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 15px;
+        }
+        #fileList {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #007bff;
+            text-align: left;
+        }
+        #loadingOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            display: none;
+            z-index: 9999;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 6px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 10px;
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .pdf-container {
+            width: 100%;
+            max-width: 100%;
+            margin-top: 30px;
+            display: block;
+}
+            /* margin-top: 30px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            display: none;
+            text-align: left; */
+        
+
+        .pdf-container iframe {
+            width: 100%;
+            height: 600px;
+            max-width: 100%;
+            margin: 0 auto;
+            /* text-align: center; */
+            border: none;
+        }
+
+        .pdf-title {
+            font-size: 18px;
+            margin-bottom: 10px;
+            color: #007bff;
+        }
+        /* Estilo da tabela */
+        .styled-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #ddd;
+            font-family: Arial, sans-serif;
+            margin-top: 20px;
+        }
+
+        .styled-table th, .styled-table td {
+            padding: 12px;
+            text-align: left;
+        }
+
+        .styled-table th {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .styled-table tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        /* Efeito de hover nas linhas */
+        .styled-table tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        /* Estilo da coluna de ações (ocultar o botão inicialmente) */
+        .actions-cell {
+            position: relative;
+            text-align: center;
+        }
+
+        .delete-btn {
+            display: none; /* Inicialmente oculto */
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: opacity 0.3s;
+        }
+
+        .actions-cell:hover .delete-btn {
+            display: inline-block;
+            background-color: #007bff;
+        }
+        .main-content {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+        }
+
+        .left-content {
+            flex: 1;
+            width: 50%;
+        }
+
+        .right-content {
+            flex: 1;
+            width: 50%;
+            padding-left: 20px;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            #pdfContainer,
+            .table-container {
+                display: none; /* Esconde o PDF e a tabela em telas menores */
+            }
+        }
+        /* Quando a tela for menor, escondemos a tabela e o PDF, e a esquerda ocupa todo o espaço */
+        @media (max-width: 768px) {
+            .right-content {
+                display: none; /* Esconde PDF e Tabela */
+            }
+            .left-content {
+                flex: 1 1 100%; /* Ocupa toda a largura */
+            }
+        }
+
+        
+    </style>
+</head>
+
+    <body>
+        <button class="theme-toggle" onclick="toggleTheme()">🌙Tema</button>  
+
+        <div class="main-content">
+            <!-- Conteúdo à esquerda -->
+            <div class="left-content">
+                <div class="container">
+                    <h2>Conversão de NFS-e PDF para XML ABRASF com IA.</h2>
+                    <div class="drop-zone" id="dropZone">Carregue aqui suas notas</div>
+                    <input type="file" id="fileInput" name="files" hidden multiple>
+                    <ul id="fileList"></ul> <!-- Lista de arquivos adicionados -->
+                </div>  
+        
+                <p id="loading" style="display: none;">⏳ Convertendo...</p>
+                <p id="message"></p>
+                
+                <div class="container">
+                    <h3>Notas carregadas</h3>
+                    <table border="1" width="100%">
+                        <thead>
+                            <tr>
+                                <!-- <th>Selecionar</th> -->
+                                <th>Nome do Arquivo</th>
+                                <th>Tamanho</th>
+                                <th>Documento ID</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fileTableBody">
+                            <!-- Linhas adicionadas dinamicamente -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="container">
+                    <button type="button" class="upload-btn">Converter para XML</button>
+                </div>
+            </div>
+        
+            <!-- Conteúdo à direita (Visualização do PDF) -->
+            <div class="right-content">
+                <div class="container">
+                    <div id="pdfContainer" class="pdf-container">
+                        <h3 class="pdf-title">Visualização do PDF:</h3>
+                        <iframe id="pdfViewer" src="" frameborder="0"></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="loadingOverlay">
+            <div class="spinner"></div>
+            <p>Processando arquivos...</p>
+        </div>
+        
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const dropZone = document.getElementById("dropZone");
+            const fileInput = document.getElementById("fileInput");
+            const uploadBtn = document.querySelector(".upload-btn");
+            const message = document.getElementById("message");
+            const fileList = document.getElementById("fileList");
+            const pdfContainer = document.getElementById("pdfContainer");
+            const pdfViewer = document.getElementById("pdfViewer");
+
+            dropZone.addEventListener("click", () => fileInput.click());
+
+            dropZone.addEventListener("dragover", (event) => {
+                event.preventDefault();
+                dropZone.classList.add("dragover");
+            });
+
+            dropZone.addEventListener("dragleave", () => {
+                dropZone.classList.remove("dragover");
+            });
+
+            dropZone.addEventListener("drop", (event) => {
+                event.preventDefault();
+                dropZone.classList.remove("dragover");
+
+                const files = event.dataTransfer.files;
+                if (files.length > 0) {
+                    fileInput.files = files;
+                    displayFileNames(files);
+                    showPdf(files[0]); // Exibir o PDF assim que for carregado
+                }
+            });
+
+            fileInput.addEventListener("change", function () {
+                displayFileNames(fileInput.files);
+                showPdf(fileInput.files[0]); // Exibir o PDF assim que for carregado
+            });
+
+            function displayFileNames(files) {
+                fileList.innerHTML = "";
+                if (files.length === 0) return;
+                for (let file of files) {
+                    let li = document.createElement("li");
+                    li.textContent = file.name;
+                    // fileList.appendChild(li);
+                }
+            }
+
+            function showPdf(file) {
+                const fileUrl = URL.createObjectURL(file);
+                pdfViewer.src = fileUrl;  // Atualiza o src do iframe com o PDF
+                pdfContainer.style.display = "block";  // Exibe a div com o PDF
+            }
+            
+
+
+            uploadBtn.addEventListener("click", () => {
+                if (fileInput.files.length === 0) {
+                    message.innerText = "Selecione pelo menos um arquivo!";
+                    return;
+                }
+
+                let formData = new FormData();
+                for (let file of fileInput.files) {
+                    formData.append("files", file);
+                }
+
+                document.getElementById("loadingOverlay").style.display = "flex";
+                message.innerText = "";
+
+                fetch("{% url 'upload-e-processar-pdf' %}", {
+                    method: "POST",
+                    body: formData,
+                    headers: {
+                        "X-CSRFToken": getCookie("csrftoken") // CSRF Token necessário
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error("Erro no upload");
+                    }
+                    return response.blob();
+                })
+                .then(blob => {
+                    document.getElementById("loadingOverlay").style.display = "none";
+                    let a = document.createElement("a");
+                    a.href = URL.createObjectURL(blob);
+                    a.download = "xml_convertidos.zip";
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    // message.innerText = "Download concluído!";
+                })
+                .catch(error => {
+                    loadingIndicator.style.display = "none";
+                    message.innerText = "Erro ao converter os arquivos.";
+                });
+            });
+
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== "") {
+                    let cookies = document.cookie.split(";");
+                    for (let i = 0; i < cookies.length; i++) {
+                        let cookie = cookies[i].trim();
+                        if (cookie.startsWith(name + "=")) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+        });
+
+        function toggleTheme() {
+            document.body.classList.toggle("dark-mode");
+
+            // Salvar a preferência do usuário no localStorage
+            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+        }
+
+        // Aplicar o tema salvo quando a página carregar
+        document.addEventListener("DOMContentLoaded", function () {
+            if (localStorage.getItem("theme") === "dark") {
+                document.body.classList.add("dark-mode");
+            }
+        });
+
+        function displayFileTable(files) {
+        const fileTableBody = document.getElementById("fileTableBody");
+        fileTableBody.innerHTML = ""; // Limpa a tabela antes de adicionar novos arquivos
+        
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                
+                <td>${file.name}</td>
+                <td>${(file.size / 1024).toFixed(2)} KB</td>
+                <td>${i + 1}</td>
+                <td class="actions-cell">
+                    <button class="delete-btn" onclick="deleteFile(${i})">Excluir</button>
+                </td> <!-- Botão de excluir -->
+            `;
+            fileTableBody.appendChild(row);
+        }
+    }
+
+    // Função para excluir o arquivo da tabela
+    function deleteFile(index) {
+        const fileTableBody = document.getElementById("fileTableBody");
+        fileTableBody.deleteRow(index); // Exclui a linha da tabela
+        // Se necessário, remova o arquivo da lista de arquivos em seu array ou variável
+        // Exemplo:
+        // files.splice(index, 1);
+    }
+
+    document.getElementById("fileInput").addEventListener("change", function () {
+        displayFileTable(this.files);
+    });
+    
+
+
+    </script>
+</body>
+</html>
