@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from lxml import etree
 from typing import Dict, Optional
 import base64
+import re
 
 # carrega as variáveis de ambiente
 load_dotenv()
@@ -405,22 +406,57 @@ class XMLGenerator:
 
         # Adicionando os campos para 'InfNfse'
         etree.SubElement(inf_nfse, "Numero").text = dados.get("numero-nota-fiscal", "")
-        etree.SubElement(inf_nfse, "CodigoVerificacao").text = dados.get("codigoVerificacao", "")
+        codigo_verificacao = dados.get("codigoVerificacao", "")
+        codigo_verificacao_clean = re.sub(r'[^a-zA-Z0-9]', '', codigo_verificacao)
+
+
+        etree.SubElement(inf_nfse, "CodigoVerificacao").text = codigo_verificacao_clean
         etree.SubElement(inf_nfse, "DataEmissao").text = str(dados.get("dataEmissao", ""))
 
         # Valores da NFS-e
         valores_nfse = etree.SubElement(inf_nfse, "ValoresNfse")
-        etree.SubElement(valores_nfse, "BaseCalculo").text = str(dados.get("baseCalculo"))
-        etree.SubElement(valores_nfse, "Aliquota").text = str(dados.get("aliquota", ""))
-        etree.SubElement(valores_nfse, "ValorIss").text = str(dados.get("valorIss"))
-        etree.SubElement(valores_nfse, "ValorLiquidoNfse").text = str(dados.get("valorLiquido", ""))
+        base_calculo = str(dados.get("baseCalculo", ""))
+        # Remove o ponto de milhar e substitui a vírgula por ponto
+        base_calculo_formatada = base_calculo.replace('.', '').replace(',', '.')
+        # Agora você pode usar a string formatada
+        etree.SubElement(valores_nfse, "BaseCalculo").text = base_calculo_formatada
+
+        aliquota = str(dados.get("aliquota", ""))
+        # Remove o caractere '%' e substitui a vírgula por ponto
+        aliquota_formatada = aliquota.replace('%', '').replace(',', '.')
+        etree.SubElement(valores_nfse, "Aliquota").text = aliquota_formatada
+
+        valor_iss = str(dados.get("valorIss", ""))
+        # Remove o ponto de milhar e substitui a vírgula por ponto
+        valor_iss_formatado = valor_iss.replace('.', '').replace(',', '.')
+        etree.SubElement(valores_nfse, "ValorIss").text = valor_iss_formatado
+        
+        valor_liquido_nfse = str(dados.get("valorLiquido", ""))
+        # Remove o ponto de milhar e substitui a vírgula por ponto
+        valor_liquido_formatado = valor_liquido_nfse.replace('.', '').replace(',', '.')
+        etree.SubElement(valores_nfse, "ValorLiquidoNfse").text = valor_liquido_formatado
+        
 
         # Dados do prestador
         prestador_servico = etree.SubElement(inf_nfse, "PrestadorServico")
         id_prestador = etree.SubElement(prestador_servico, "IdentificacaoPrestador")
         cpf_cnpj_prestador = etree.SubElement(id_prestador, "CpfCnpj")
-        etree.SubElement(cpf_cnpj_prestador, "Cnpj").text = dados.get("cpfCnpjPrestador")
-        etree.SubElement(id_prestador, "InscricaoMunicipal").text = dados.get("inscricaoMunicipalPrestador", "")
+
+        cpf_cnpj_prestador_text = dados.get("cpfCnpjPrestador", "")
+        # Remove caracteres não numéricos
+        cpf_cnpj_prestador_clean = re.sub(r'\D', '', cpf_cnpj_prestador_text)
+        # Verifica se é CPF ou CNPJ
+        if len(cpf_cnpj_prestador_clean) == 11:
+            etree.SubElement(cpf_cnpj_prestador, "Cpf").text = cpf_cnpj_prestador_clean
+        else:
+            etree.SubElement(cpf_cnpj_prestador, "Cnpj").text = cpf_cnpj_prestador_clean
+
+        inscricao_municipal = dados.get("inscricaoMunicipalPrestador", "")
+        # Remove caracteres não numéricos
+        inscricao_municipal_clean = re.sub(r'\D', '', inscricao_municipal)
+        etree.SubElement(id_prestador, "InscricaoMunicipal").text = inscricao_municipal_clean
+        
+        
         etree.SubElement(prestador_servico, "RazaoSocial").text = dados.get("razaoSocialPrestador")
         etree.SubElement(prestador_servico, "NomeFantasia").text = dados.get("nomeFantasiaPrestador")
 
@@ -431,7 +467,10 @@ class XMLGenerator:
         etree.SubElement(endereco_prestador, "Bairro").text = dados.get("bairroPrestador")
         etree.SubElement(endereco_prestador, "CodigoMunicipio").text = str(dados.get("municipioPrestacaoServico", ""))
         etree.SubElement(endereco_prestador, "CodigoPais").text = str(dados.get("codigoPais", "1058"))
-        etree.SubElement(endereco_prestador, "Cep").text = dados.get("cepPrestador")
+        cep_prestador = dados.get("cepPrestador", "")
+        # Remove caracteres não numéricos
+        cep_prestador_clean = re.sub(r'\D', '', cep_prestador)
+        etree.SubElement(endereco_prestador, "Cep").text = cep_prestador_clean
 
         # Contato do prestador
         contato_prestador = etree.SubElement(prestador_servico, "Contato")
@@ -451,14 +490,14 @@ class XMLGenerator:
         # Serviço
         servico = etree.SubElement(inf_declaracao_prestacao_servico, "Servico")
         valores_servico = etree.SubElement(servico, "Valores")
-        etree.SubElement(valores_servico, "ValorServicos").text = str(dados.get("valorServicos"))
-        etree.SubElement(valores_servico, "ValorDeducoes").text = str(dados.get("deducoes", "0.00"))
-        etree.SubElement(valores_servico, "ValorIr").text = str(dados.get("impostoRenda", "0.00"))
-        etree.SubElement(valores_servico, "ValorIss").text = str(dados.get("valorIss", "0.00"))
-        etree.SubElement(valores_servico, "Aliquota").text = str(dados.get("aliquota"))
-        etree.SubElement(servico, "IssRetido").text = str(dados.get("iss_retido", ""))
-        etree.SubElement(servico, "ItemListaServico").text = dados.get("item_lista_servico", "")
-        etree.SubElement(servico, "CodigoCnae").text = dados.get("codigo_cnae", "")
+        etree.SubElement(valores_servico, "ValorServicos").text = re.sub(r'[^\d.,]', '', str(dados.get("valorServicos", "")))
+        etree.SubElement(valores_servico, "ValorDeducoes").text = re.sub(r'[^\d.,]', '', str(dados.get("deducoes", "0.00")))
+        etree.SubElement(valores_servico, "ValorIr").text = re.sub(r'[^\d.,]', '', str(dados.get("impostoRenda", "0.00")))
+        etree.SubElement(valores_servico, "ValorIss").text = re.sub(r'[^\d.,]', '', str(dados.get("valorIss", "0.00")))
+        etree.SubElement(valores_servico, "Aliquota").text = re.sub(r'[^\d.,]', '', str(dados.get("aliquota", "")))
+        etree.SubElement(servico, "IssRetido").text = re.sub(r'[^\d.,]', '', str(dados.get("iss_retido", "")))
+        etree.SubElement(servico, "ItemListaServico").text = re.sub(r'[^\w\s]', '', dados.get("item_lista_servico", ""))
+        etree.SubElement(servico, "CodigoCnae").text = re.sub(r'[^\w\s]', '', dados.get("codigo_cnae", ""))
         etree.SubElement(servico, "Discriminacao").text = dados.get("Discriminacao", "")
         etree.SubElement(servico, "CodigoMunicipio").text = str(dados.get("municipioPrestacaoServico", ""))
         etree.SubElement(servico, "CodigoPais").text = str(dados.get("codigoPais", "1058"))
