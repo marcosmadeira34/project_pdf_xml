@@ -6,36 +6,53 @@ from google.protobuf.json_format import MessageToJson
 from dotenv import load_dotenv
 from lxml import etree
 from typing import Dict, Optional
+import base64
 
 # carrega as variáveis de ambiente
 load_dotenv()
 
 # define a classe de credenciais (conceito SOLID)
 class CredentialsLoader:
-    """Carrega as variáveis do Google à partir de variáveis de ambiente"""
+    """Carrega as credenciais do Google a partir de um arquivo local ou de Base64"""
 
     @staticmethod
     def loader_credentials() -> Optional[service_account.Credentials]:
-        credentials_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-        if not credentials_json:
+        credentials_env = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+
+        if not credentials_env:
             print("Variável de ambiente GOOGLE_APPLICATION_CREDENTIALS não definida")
             return None
 
-        print(f"Carregando credenciais de: {credentials_json}")
+        # Verifica se a string é um caminho de arquivo válido
+        if os.path.exists(credentials_env):
+            print(f"Carregando credenciais do arquivo: {credentials_env}")
+            try:
+                with open(credentials_env, "r") as file:
+                    credentials_data = json.load(file)
+                return service_account.Credentials.from_service_account_info(credentials_data)
+            except Exception as e:
+                print(f"Erro ao carregar credenciais do arquivo: {e}")
+                return None
 
+        # Se não for um caminho válido, assume que é um JSON codificado em Base64
         try:
-            with open(credentials_json, 'r') as file:
-                credentials_data = json.load(file)  # Carrega diretamente o arquivo JSON
-            return service_account.Credentials.from_service_account_info(credentials_data) 
-        except json.JSONDecodeError as e:
-            print(f"Erro ao carregar as credenciais: {e}")
-            return None
-        except FileNotFoundError as e:
-            print(f"Arquivo de credenciais não encontrado: {e}")
-            return None
+            print("Detectado formato Base64, decodificando credenciais...")
+            credentials_json = base64.b64decode(credentials_env).decode("utf-8")
+
+            # Salva temporariamente no sistema de arquivos
+            temp_credentials_path = "/tmp/google_credentials.json"
+            with open(temp_credentials_path, "w") as temp_file:
+                temp_file.write(credentials_json)
+
+            print(f"Credenciais salvas temporariamente em: {temp_credentials_path}")
+
+            credentials_data = json.loads(credentials_json)
+            return service_account.Credentials.from_service_account_info(credentials_data)
+
         except Exception as e:
-            print(f"Erro ao carregar as credenciais: {e}")
+            print(f"Erro ao processar credenciais: {e}")
             return None
+
 
 # define a classe de extração de dados
 class DocumentAIProcessor:
