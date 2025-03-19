@@ -404,9 +404,9 @@ class XMLGenerator:
         inf_nfse = etree.SubElement(nfse, "InfNfse", Id="")
 
         # Adicionando os campos para 'Nfse'
-        etree.SubElement(nfse, "Serie").text = dados.get("serie", "")
-        etree.SubElement(nfse, "Tipo").text = dados.get("tipo_nfse", "1")
-        etree.SubElement(nfse, "Status").text = dados.get("status", "1")
+        #etree.SubElement(nfse, "Serie").text = dados.get("serie", "")
+        #etree.SubElement(nfse, "Tipo").text = dados.get("tipo_nfse", "1")
+        #etree.SubElement(nfse, "Status").text = dados.get("status", "1")
 
         # Criando o bloco 'InfNfse' e seus campos internos
         inf_nfse = etree.SubElement(root, "InfNfse")
@@ -426,7 +426,7 @@ class XMLGenerator:
         id_prestador = etree.SubElement(prestador_servico, "IdentificacaoPrestador")
         etree.SubElement(id_prestador, "CpfCnpj").text = dados.get("cpfCnpjPrestador")
         etree.SubElement(id_prestador, "InscricaoMunicipal").text = dados.get("inscricaoMunicipalPrestador", "")
-        etree.SubElement(prestador_servico, "razaoSocialPrestador").text = dados.get("razaoSocialPrestador")
+        etree.SubElement(prestador_servico, "RazaoSocial").text = dados.get("razaoSocialPrestador")
         etree.SubElement(prestador_servico, "NomeFantasia").text = dados.get("nomeFantasiaPrestador")
 
         # Endereço do prestador
@@ -434,8 +434,13 @@ class XMLGenerator:
         etree.SubElement(endereco_prestador, "Endereco").text = dados.get("enderecoPrestador")
         etree.SubElement(endereco_prestador, "Numero").text = str(dados.get("numeroPrestador"))
         etree.SubElement(endereco_prestador, "Bairro").text = dados.get("bairroPrestador")
-        etree.SubElement(endereco_prestador, "Complemento").text = dados.get("complemento")
+        etree.SubElement(endereco_prestador, 'CodigoMunicipio').text = dados.get('municipioPrestador')
+        etree.SubElement(endereco_prestador, "CodigoPais").text = dados.get("codigoPais", "1058")
         etree.SubElement(endereco_prestador, "Cep").text = dados.get("cepPrestador")
+        #etree.SubElement(endereco_prestador, "Complemento").text = dados.get("complemento")
+        contato_prestador = etree.SubElement(prestador_servico, 'Contato')
+        etree.SubElement(contato_prestador, 'Telefone').text = dados.get("telefonePrestador")
+        etree.SubElement(contato_prestador, 'Email').text = dados.get("emailPrestador")
 
         # Orgão Gerador
         orgao_gerador = etree.SubElement(inf_nfse, "OrgaoGerador")
