@@ -274,7 +274,7 @@
                                 <th>Nome do Arquivo</th>
                                 <th>Tamanho</th>
                                 <th>Documento ID</th>
-                                <th>Progresso</th>
+                                <!-- <th>Progresso</th> -->
                                 <th>Ações</th>
                             </tr>
                         </thead>
@@ -373,8 +373,7 @@
                     formData.append("files", file);
                 }
 
-                let loadingOverlay = document.getElementById("loadingOverlay");
-                loadingOverlay.style.display = "flex";
+                document.getElementById("loadingOverlay").style.display = "flex";
                 message.innerText = "";
 
                 fetch("{% url 'upload-e-processar-pdf' %}", {
@@ -384,32 +383,25 @@
                         "X-CSRFToken": getCookie("csrftoken") // CSRF Token necessário
                     }
                 })
-                .then(response => response.json())  // Aguarda resposta JSON ao invés de blob direto
-                .then(data => {
-                    if (data.status !== "success") {
-                        throw new Error(data.message || "Erro ao processar os arquivos.");
-                    }
-
-                    return fetch(data.zip_url); // Faz novo fetch para baixar o arquivo ZIP
-                })
                 .then(response => {
                     if (!response.ok) {
-                        throw new Error("Erro ao baixar o arquivo ZIP.");
+                        throw new Error("Erro no upload");
                     }
                     return response.blob();
                 })
                 .then(blob => {
-                    loadingOverlay.style.display = "none";
+                    document.getElementById("loadingOverlay").style.display = "none";
                     let a = document.createElement("a");
                     a.href = URL.createObjectURL(blob);
                     a.download = "xml_convertidos.zip";
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
+                    // message.innerText = "Download concluído!";
                 })
                 .catch(error => {
-                    loadingOverlay.style.display = "none";
-                    message.innerText = `Erro: ${error.message}`;
+                    loadingIndicator.style.display = "none";
+                    message.innerText = "Erro ao converter os arquivos.";
                 });
             });
 
@@ -455,7 +447,7 @@
                 <td>${file.name}</td>
                 <td>${(file.size / 1024).toFixed(2)} KB</td>
                 <td>${i + 1}</td>
-                <td class="progress-bar">Aguardando...</td> <!-- Progresso correto -->
+                
                 <td class="actions-cell">
                     <button class="delete-btn" onclick="deleteFile(${i})">Excluir</button>
                 </td> <!-- Botão de excluir -->
@@ -479,56 +471,45 @@
     
     
     function acompanharProgresso(taskId, row) {
-    let progressCell = row.querySelector(".progress-bar");  // Certifique-se de que há um elemento com essa classe
+    let progressCell = row.querySelector(".progress-bar");
     let actionCell = row.querySelector(".action-cell");
 
     function atualizar() {
         fetch(`/task-status/${taskId}`)
             .then(response => response.json())
             .then(data => {
-                console.log("Status recebido:", data); // Debug para verificar a resposta da API
-                
                 if (data.status === "processing") {
                     let percent = (data.processed / data.total) * 100;
                     progressCell.innerHTML = `<progress value="${percent}" max="100"></progress>`;
                     setTimeout(atualizar, 2000);  // Atualiza a cada 2 segundos
                 } else if (data.status === "completed") {
-                    progressCell.innerHTML = "Concluído ✅"; // Mostra que o processo foi finalizado
                     actionCell.innerHTML = `<a href="${data.zip_url}" class="btn btn-success">Baixar XML</a>`;
-                } else {
-                    progressCell.innerHTML = "Erro ❌";
                 }
-            })
-            .catch(error => {
-                console.error("Erro ao buscar status:", error);
-                progressCell.innerHTML = "Falha ❌";
             });
     }
+    atualizar();
+    }
 
-    atualizar(); // Chama a função inicialmente
-}
-document.addEventListener("DOMContentLoaded", function () {
-    let tabela = document.getElementById("fileTableBody");
+    document.addEventListener("DOMContentLoaded", function () {
+        let tabela = document.getElementById("fileTableBody");
 
-    fetch("/listar-tasks/")  // API que retorna as tarefas pendentes
-        .then(response => response.json())
-        .then(tasks => {
-            tasks.forEach(task => {
-                let row = document.createElement("tr");
-                row.innerHTML = `
-                    <td>${task.filename}</td>
-                    <td>${task.size}</td>
-                    <td>${task.document_id}</td>
-                    <td class="progress-bar">Aguardando...</td> <!-- Progresso correto -->
-                    <td class="action-cell"></td> <!-- Corrige a célula vazia -->
-                `;
-                tabela.appendChild(row);
-                acompanharProgresso(task.task_id, row); // Agora passa a linha correta
+        fetch("/listar-tasks/")  // API que retorna as tarefas pendentes
+            .then(response => response.json())
+            .then(tasks => {
+                tasks.forEach(task => {
+                    let row = document.createElement("tr");
+                    row.innerHTML = `
+                        <td>${task.filename}</td>
+                        <td>${task.size}</td>
+                        <td>${task.document_id}</td>
+                        <td class="progress-bar">Aguardando...</td>
+                        <td class="action-cell"></td>
+                    `;
+                    tabela.appendChild(row);
+                    acompanharProgresso(task.task_id, row);
+                });
             });
-        })
-        .catch(error => console.error("Erro ao listar tarefas:", error));
-});
-
+    });
     
 
 
