@@ -1,1 +1,1 @@
-web: gunicorn nfse_abrasf.wsgi --log-file -
+web: gunicorn --timeout 120 --workers 2 nfse_abrasf.wsgi --log-file -
