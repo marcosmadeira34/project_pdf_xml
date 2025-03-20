@@ -27,29 +27,25 @@ def processar_pdfs(self, files_data):
             try:
                 print(f"[INFO] Processando: {file_name}...")
 
-                # Processar o PDF com Google Document AI
                 document_json = processor.processar_pdf(project_id, location, processor_id, pdf_bytes)
-                
+
                 if not document_json:
                     print(f"[ERRO] processar_pdf() falhou para {file_name}")
-                    continue  # Pula para o próximo arquivo
+                    continue
 
-                # Mapear campos do JSON extraído
                 dados_extraidos = processor.mapear_campos(document_json)
                 print(f"[DEBUG] Dados extraídos: {dados_extraidos}")
 
                 if not dados_extraidos:
                     print(f"[ERRO] Nenhum dado extraído para {file_name}")
-                    continue  # Pula para o próximo arquivo
+                    continue
 
-                # Gerar XML
                 xml = XMLGenerator.gerar_xml_abrasf(dados_extraidos)
 
                 if not xml:
                     print(f"[ERRO] XML não gerado para {file_name}")
-                    continue  # Pula para o próximo arquivo
+                    continue
 
-                # Adicionar XML ao ZIP
                 xml_filename = os.path.splitext(file_name)[0] + ".xml"
                 zip_file.writestr(xml_filename, xml)
                 xml_files.append(xml_filename)  # Armazena o nome do arquivo gerado
@@ -64,12 +60,11 @@ def processar_pdfs(self, files_data):
                 print(f"[ERRO] Exceção ao processar {file_name}: {e}")
                 continue
 
-    # Salvar o ZIP gerado
     zip_buffer.seek(0)
     zip_filename = f"{uuid.uuid4().hex}.zip"  # Nome único para o arquivo ZIP
     zip_path = os.path.join("xml_processados", zip_filename)
 
-    if xml_files:  # Só salva o ZIP se houver arquivos XML
+    if xml_files:
         default_storage.save(zip_path, ContentFile(zip_buffer.getvalue()))
         print(f"[INFO] ZIP salvo em: {zip_path}")
         task_status = "SUCCESS"
@@ -77,5 +72,5 @@ def processar_pdfs(self, files_data):
         print("[ERRO] Nenhum XML gerado, abortando salvamento.")
         task_status = "FAILURE"
 
-    # Retornar resultado final da tarefa
+    # Retornar resultado final
     return {"status": task_status, "zip_path": zip_path if xml_files else None, "xml_files": xml_files}
