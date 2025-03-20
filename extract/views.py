@@ -15,61 +15,47 @@ import zipfile
 import io
 from PyPDF2 import PdfMerger
 from django.views.decorators.csrf import csrf_exempt
-
+from django.http import JsonResponse
+from django.core.files.storage import default_storage
+from celery.result import AsyncResult
+from .tasks import processar_pdfs
 
 load_dotenv()
 print("Variáveis de ambiente carregadas.")
 
 class UploadEProcessarPDFView(View):
-    """View para processar um PDF e gerar um XML."""
+    """View para upload e processamento assíncrono de PDFs."""
 
     @method_decorator(login_required)
     def get(self, request):
-        """Exibe o formulário de upload."""
+        """Renderiza o formulário de upload."""
         return render(request, "test_processar.html")
-    
 
     @method_decorator(login_required)
     def post(self, request):
-        """Processa múltiplos PDFs e retorna um ZIP com os XMLs."""
-        files = request.FILES.getlist("files")  # Obtém todos os arquivos enviados
+        """Inicia o processamento dos PDFs via Celery e retorna o task_id."""
+        files = request.FILES.getlist("files")
 
         if not files:
             return JsonResponse({"error": "Nenhum arquivo enviado"}, status=400)
 
-        processor = DocumentAIProcessor()
-        project_id = os.getenv("PROJECT_ID")
-        location = os.getenv("LOCATION")
-        processor_id = os.getenv("PROCESSOR_ID")
+        # Converter os arquivos para um dicionário {nome: bytes}
+        files_data = {pdf.name: pdf.read() for pdf in files}
 
-        # Criar um buffer de memória para armazenar o ZIP
-        zip_buffer = io.BytesIO()
+        # Enviar para processamento assíncrono
+        task = processar_pdfs.delay(files_data)
 
-        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-            for pdf_file in files:
-                try:
-                    print(f"Processando: {pdf_file.name}...")
-                    pdf_data = pdf_file.read()
-                    document_json = processor.processar_pdf(project_id, location, processor_id, pdf_data)
-                    
-                    # Extrai os dados do JSON retornado pelo Document AI
-                    dados_extraidos = processor.mapear_campos(document_json)
-                    xml = XMLGenerator.gerar_xml_abrasf(dados_extraidos)
+        return JsonResponse({"task_id": task.id, "message": "Processamento iniciado!"})
 
-                    # Adicionar ao ZIP com o nome do arquivo original convertido para .xml
-                    xml_filename = os.path.splitext(pdf_file.name)[0] + ".xml"
-                    zip_file.writestr(xml_filename, xml)
+class TaskStatusView(View):
+    """Verifica o status de uma task do Celery."""
 
-                except Exception as e:
-                    print(f"Erro ao processar {pdf_file.name}: {e}")
-                    return JsonResponse({"error": f"Erro ao processar {pdf_file.name}: {str(e)}"}, status=500)
-
-        # Preparar o ZIP para download
-        zip_buffer.seek(0)
-        response = HttpResponse(zip_buffer.read(), content_type="application/zip")
-        response["Content-Disposition"] = 'attachment; filename="xml_convertidos.zip"'
-
-        return response
+    def get(self, request, task_id):
+        result = AsyncResult(task_id)
+        if result.state == "SUCCESS":
+            zip_url = default_storage.url(result.result)  # URL do ZIP gerado
+            return JsonResponse({"status": "completed", "zip_url": zip_url})
+        return JsonResponse({"status": result.state})
         
    
 
