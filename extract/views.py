@@ -115,9 +115,12 @@ class TaskStatusView(View):
                 "total": result.info.get("total", 1),
             })
 
-        if result.state == "SUCCESS":
-            zip_url = default_storage.url(result.result["zip_path"])
-            xml_files = result.result["xml_files"]
-            return JsonResponse({"status": "completed", "zip_url": zip_url, "xml_files": xml_files})
+        if result.state == "SUCCESS" and result.result:
+            zip_path = result.result.get("zip_path", "")
+            if not zip_path:
+                return JsonResponse({"status": "error", "message": "ZIP não encontrado."})
 
-        return JsonResponse({"status": result.state})
+            zip_url = default_storage.url(zip_path)
+            return JsonResponse({"status": "completed", "zip_url": zip_url, "xml_files": result.result["xml_files"]})
+
+        return JsonResponse({"status": result.state, "message": "Processamento em andamento ou erro."})

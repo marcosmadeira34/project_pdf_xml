@@ -7,6 +7,7 @@ from django.core.files.base import ContentFile
 from .services import DocumentAIProcessor
 from .services import XMLGenerator
 from django.core.files.storage import default_storage
+import uuid
 
 @shared_task(bind=True)
 def processar_pdfs(self, files_data):
@@ -49,7 +50,15 @@ def processar_pdfs(self, files_data):
 
     # Salvar o ZIP gerado
     zip_buffer.seek(0)
-    zip_path = f"xml_processados/{os.urandom(8).hex()}.zip"
+    zip_filename = f"{uuid.uuid4().hex}.zip"  # Garante um nome único
+    zip_path = os.path.join("xml_processados", zip_filename)
+
+    # Testa se o diretório existe
+    if not default_storage.exists("xml_processados"):
+        default_storage.mkdir("xml_processados")
+
     default_storage.save(zip_path, ContentFile(zip_buffer.getvalue()))
+
+    print(f"ZIP salvo em: {zip_path}")
 
     return {"zip_path": zip_path, "xml_files": xml_files}  # Retorna o caminho do ZIP e lista de XMLs gerados

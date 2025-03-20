@@ -361,58 +361,78 @@
             }
             
 
+        // ################################################################################
 
             uploadBtn.addEventListener("click", () => {
-                if (fileInput.files.length === 0) {
-                    message.innerText = "Selecione pelo menos um arquivo!";
-                    return;
+            if (fileInput.files.length === 0) {
+                message.innerText = "Selecione pelo menos um arquivo!";
+                return;
+            }
+
+            let formData = new FormData();
+            for (let file of fileInput.files) {
+                formData.append("files", file);
+            }
+
+            let loadingOverlay = document.getElementById("loadingOverlay");
+            loadingOverlay.style.display = "flex";
+            message.innerText = "";
+
+            fetch("{% url 'upload-e-processar-pdf' %}", {
+                method: "POST",
+                body: formData,
+                headers: {
+                    "X-CSRFToken": getCookie("csrftoken") // CSRF Token necessário
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status !== "success") {
+                    throw new Error(data.message || "Erro ao iniciar processamento.");
                 }
 
-                let formData = new FormData();
-                for (let file of fileInput.files) {
-                    formData.append("files", file);
-                }
+                let taskId = data.task_id;
 
-                let loadingOverlay = document.getElementById("loadingOverlay");
-                loadingOverlay.style.display = "flex";
-                message.innerText = "";
-
-                fetch("{% url 'upload-e-processar-pdf' %}", {
-                    method: "POST",
-                    body: formData,
-                    headers: {
-                        "X-CSRFToken": getCookie("csrftoken") // CSRF Token necessário
-                    }
-                })
-                .then(response => response.json())  // Aguarda resposta JSON ao invés de blob direto
-                .then(data => {
-                    if (data.status !== "success") {
-                        throw new Error(data.message || "Erro ao processar os arquivos.");
-                    }
-
-                    return fetch(data.zip_url); // Faz novo fetch para baixar o arquivo ZIP
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error("Erro ao baixar o arquivo ZIP.");
-                    }
-                    return response.blob();
-                })
-                .then(blob => {
-                    loadingOverlay.style.display = "none";
-                    let a = document.createElement("a");
-                    a.href = URL.createObjectURL(blob);
-                    a.download = "xml_convertidos.zip";
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                })
-                .catch(error => {
-                    loadingOverlay.style.display = "none";
-                    message.innerText = `Erro: ${error.message}`;
-                });
+                // Verifica o progresso a cada 3 segundos
+                let interval = setInterval(() => {
+                    fetch(`/task-status/${taskId}/`)
+                    .then(res => res.json())
+                    .then(statusData => {
+                        if (statusData.status === "completed") {
+                            clearInterval(interval);
+                            
+                            fetch(statusData.zip_url) // Baixa o ZIP após sucesso
+                            .then(response => response.blob())
+                            .then(blob => {
+                                let a = document.createElement("a");
+                                a.href = URL.createObjectURL(blob);
+                                a.download = "xml_convertidos.zip";
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                                loadingOverlay.style.display = "none";
+                            })
+                            .catch(() => {
+                                message.innerText = "Erro ao baixar o arquivo.";
+                            });
+                        } else if (statusData.status === "error") {
+                            clearInterval(interval);
+                            message.innerText = "Erro no processamento.";
+                            loadingOverlay.style.display = "none";
+                        }
+                    })
+                    .catch(() => {
+                        clearInterval(interval);
+                        message.innerText = "Erro ao verificar status.";
+                        loadingOverlay.style.display = "none";
+                    });
+                }, 3000); // Checa a cada 3 segundos
+            })
+            .catch(error => {
+                loadingOverlay.style.display = "none";
+                message.innerText = `Erro: ${error.message}`;
             });
-
+        });
             function getCookie(name) {
                 let cookieValue = null;
                 if (document.cookie && document.cookie !== "") {
