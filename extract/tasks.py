@@ -20,18 +20,34 @@ def processar_pdfs(self, files_data):
     total_files = len(files_data)
     processed_files = 0
     xml_files = []  # Lista para armazenar os nomes dos arquivos XML
-
-    # Criar buffer para ZIP
     zip_buffer = io.BytesIO()
 
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
         for file_name, pdf_bytes in files_data.items():
             try:
-                print(f"Processando: {file_name}...")
+                print(f"[INFO] Processando: {file_name}...")
 
+                # Processar o PDF com Google Document AI
                 document_json = processor.processar_pdf(project_id, location, processor_id, pdf_bytes)
+                
+                if not document_json:
+                    print(f"[ERRO] processar_pdf() falhou para {file_name}")
+                    continue  # Pula para o próximo arquivo
+
+                # Mapear campos do JSON extraído
                 dados_extraidos = processor.mapear_campos(document_json)
+                print(f"[DEBUG] Dados extraídos: {dados_extraidos}")
+
+                if not dados_extraidos:
+                    print(f"[ERRO] Nenhum dado extraído para {file_name}")
+                    continue  # Pula para o próximo arquivo
+
+                # Gerar XML
                 xml = XMLGenerator.gerar_xml_abrasf(dados_extraidos)
+
+                if not xml:
+                    print(f"[ERRO] XML não gerado para {file_name}")
+                    continue  # Pula para o próximo arquivo
 
                 # Adicionar XML ao ZIP
                 xml_filename = os.path.splitext(file_name)[0] + ".xml"
@@ -42,10 +58,10 @@ def processar_pdfs(self, files_data):
                 self.update_state(state="PROGRESS", meta={"processed": processed_files, "total": total_files})
 
             except SoftTimeLimitExceeded:
-                print(f"Timeout ao processar {file_name}")
+                print(f"[ERRO] Timeout ao processar {file_name}")
                 break
             except Exception as e:
-                print(f"Erro ao processar {file_name}: {e}")
+                print(f"[ERRO] Exceção ao processar {file_name}: {e}")
                 continue
 
     # Salvar o ZIP gerado
@@ -53,8 +69,13 @@ def processar_pdfs(self, files_data):
     zip_filename = f"{uuid.uuid4().hex}.zip"  # Nome único para o arquivo ZIP
     zip_path = os.path.join("xml_processados", zip_filename)
 
-    # Salvar no storage
-    default_storage.save(zip_path, ContentFile(zip_buffer.getvalue()))
-    print(f"ZIP salvo em: {zip_path}")
+    if xml_files:  # Só salva o ZIP se houver arquivos XML
+        default_storage.save(zip_path, ContentFile(zip_buffer.getvalue()))
+        print(f"[INFO] ZIP salvo em: {zip_path}")
+        task_status = "SUCCESS"
+    else:
+        print("[ERRO] Nenhum XML gerado, abortando salvamento.")
+        task_status = "FAILURE"
 
-    return {"zip_path": zip_path, "xml_files": xml_files}  # Retorna o caminho do ZIP e lista de XMLs gerados
+    # Retornar resultado final da tarefa
+    return {"status": task_status, "zip_path": zip_path if xml_files else None, "xml_files": xml_files}
