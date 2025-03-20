@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Numero>201690000000011</Numero>
+<CodigoVerificacao>sBMEvhYG</CodigoVerificacao>
+<DataEmissao>2016-10-06T14:04:30</DataEmissao>
+<BaseCalculo>12456.88</BaseCalculo>
+<Aliquota>2.00</Aliquota>
+<ValorIss>249.14</ValorIss>
+<ValorLiquidoNfse>12270.03</ValorLiquidoNfse>
+</ValoresNfse>
+
+<Cnpj>18747794000117</Cnpj>
+</CpfCnpj>
+<InscricaoMunicipal>204266</InscricaoMunicipal>
+</IdentificacaoPrestador>
+<RazaoSocial>R&W TESTE LTDA</RazaoSocial>
+<NomeFantasia>r&w TESTE</NomeFantasia>
+<Endereco>Rua ALBERTO BARBOSA DA SILVA(ANTIGA RUA 21)
+</Endereco>
+<Numero>66</Numero>
+<Bairro>TESTE</Bairro>
+<CodigoMunicipio>3154606</CodigoMunicipio>
+<CodigoPais>1058</CodigoPais>
+<Cep>33925430</Cep>
+</Endereco>
+<Telefone>(00)0000-3131</Telefone>
+<Email>teste@teste.com.br</Email>
+</Contato>
+</PrestadorServico>
+<CodigoMunicipio>3154606</CodigoMunicipio>
+<Uf>MG</Uf>
+</OrgaoGerador>
+
+<Competencia>2016-10-06</Competencia>
+
+<ValorServicos>12456.88</ValorServicos>
+<ValorDeducoes>0.00</ValorDeducoes>
+<ValorIr>186.85</ValorIr>
+<ValorIss>249.14</ValorIss>
+<CompNfse xmlns="http://www.abrasf.org.br/nfse.xsd">
+- <Nfse versao="1.00">
+- <InfNfse Id="">
+
+- <ValoresNfse>
+
+- <PrestadorServico>
+- <IdentificacaoPrestador>
+- <CpfCnpj>
+
+- <Endereco>
+
+- <Contato>
+
+- <OrgaoGerador>
+
+- <DeclaracaoPrestacaoServico>
+- <InfDeclaracaoPrestacaoServico>
+- <Servico>
+- <Valores>
+
+<Aliquota>2.00</Aliquota>
+</Valores>
+<IssRetido>2</IssRetido>
+<ItemListaServico>10.09</ItemListaServico>
+<CodigoCnae>4619200</CodigoCnae>
+<Discriminacao>&#147;Comissão referente à prestação de serviço no
+mês</Discriminacao>
+<CodigoMunicipio>3154606</CodigoMunicipio>
+<CodigoPais>1058</CodigoPais>
+<ExigibilidadeISS>1</ExigibilidadeISS>
+<MunicipioIncidencia>3154606</MunicipioIncidencia>
+</Servico>
+
+<Cnpj>18747794000117</Cnpj>
+</CpfCnpj>
+<InscricaoMunicipal>204266</InscricaoMunicipal>
+</Prestador>
+
+<Cnpj>17245986000162</Cnpj>
+</CpfCnpj>
+</IdentificacaoTomador>
+<RazaoSocial>TOMADOR TESTE</RazaoSocial>
+<Endereco>Estrada de Acesso a Colonia Maria Custodia</Endereco>
+<Numero>150</Numero>
+<Bairro>Distrito Indl Simao da Cunha</Bairro>
+<CodigoMunicipio>3157807</CodigoMunicipio>
+<Uf>MG</Uf>
+<CodigoPais>1058</CodigoPais>
+<Cep>33010970</Cep>
+</Endereco>
+<Telefone>(31)2105-6237</Telefone>
+</Contato>
+</Tomador>
+<OptanteSimplesNacional>2</OptanteSimplesNacional>
+<IncentivoFiscal>2</IncentivoFiscal>
+</InfDeclaracaoPrestacaoServico>
+</DeclaracaoPrestacaoServico>
+</InfNfse>
+</Nfse>
+</CompNfse>

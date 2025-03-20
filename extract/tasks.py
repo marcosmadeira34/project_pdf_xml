@@ -3,8 +3,8 @@ import io
 import zipfile
 from celery import shared_task
 from django.core.files.base import ContentFile
-from .document_ai_processor import DocumentAIProcessor
-from .xml_generator import XMLGenerator
+from .services import DocumentAIProcessor
+from .services import XMLGenerator
 from django.core.files.storage import default_storage
 
 @shared_task
