@@ -373,7 +373,8 @@
                     formData.append("files", file);
                 }
 
-                document.getElementById("loadingOverlay").style.display = "flex";
+                let loadingOverlay = document.getElementById("loadingOverlay");
+                loadingOverlay.style.display = "flex";
                 message.innerText = "";
 
                 fetch("{% url 'upload-e-processar-pdf' %}", {
@@ -383,25 +384,32 @@
                         "X-CSRFToken": getCookie("csrftoken") // CSRF Token necessário
                     }
                 })
+                .then(response => response.json())  // Aguarda resposta JSON ao invés de blob direto
+                .then(data => {
+                    if (data.status !== "success") {
+                        throw new Error(data.message || "Erro ao processar os arquivos.");
+                    }
+
+                    return fetch(data.zip_url); // Faz novo fetch para baixar o arquivo ZIP
+                })
                 .then(response => {
                     if (!response.ok) {
-                        throw new Error("Erro no upload");
+                        throw new Error("Erro ao baixar o arquivo ZIP.");
                     }
                     return response.blob();
                 })
                 .then(blob => {
-                    document.getElementById("loadingOverlay").style.display = "none";
+                    loadingOverlay.style.display = "none";
                     let a = document.createElement("a");
                     a.href = URL.createObjectURL(blob);
                     a.download = "xml_convertidos.zip";
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
-                    // message.innerText = "Download concluído!";
                 })
                 .catch(error => {
-                    loadingIndicator.style.display = "none";
-                    message.innerText = "Erro ao converter os arquivos.";
+                    loadingOverlay.style.display = "none";
+                    message.innerText = `Erro: ${error.message}`;
                 });
             });
 
