@@ -535,18 +535,10 @@ class XMLGenerator:
         etree.SubElement(valores_servico, "ValorIss").text = valor_iss_servico_formatado
 
         # Aliquota
-        aliquota_servico = str(dados.get("aliquota", "")).strip()
-
-        # Remove o caractere '%' e substitui a vírgula por ponto
-        aliquota_formatada = aliquota_servico.replace('%', '').replace(',', '.')
-
-        # Tenta converter para float, lançando erro se for inválido
-        if aliquota_formatada:
-            aliquota_float = float(aliquota_formatada)
-        else:
-            raise ValueError(f"Valor inválido para alíquota: {aliquota}")
-
-        etree.SubElement(valores_nfse, "Aliquota").text = str(aliquota_float)
+        aliquota_servico = str(dados.get("aliquota", "0.00"))
+        aliquota_servico_formatada = aliquota_servico.replace(',', '.').replace(' ', '')  # Remove espaços e converte vírgulas
+        aliquota_servico_formatada = "{:.2f}".format(float(aliquota_servico_formatada))  # Garante 2 casas decimais
+        etree.SubElement(valores_servico, "Aliquota").text = aliquota_servico_formatada
 
         # IssRetido
         iss_retido = str(dados.get("iss_retido", "0.00"))
