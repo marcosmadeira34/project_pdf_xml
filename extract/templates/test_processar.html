@@ -468,48 +468,7 @@
         displayFileTable(this.files);
     });
     
-    document.addEventListener("DOMContentLoaded", function () {
-    const uploadBtn = document.querySelector(".upload-btn");
-    const loadingOverlay = document.getElementById("loadingOverlay");
-    const loadingText = loadingOverlay.querySelector("p");
-
-    // Mensagens dinâmicas
-    const messages = [
-        "Verificando arquivos...",
-        "Processando dados...",
-        "Quase pronto...",
-        "Finalizando conversão..."
-    ];
     
-    function showLoading() {
-        loadingOverlay.style.display = "flex";
-        let step = 0;
-        
-        const interval = setInterval(() => {
-            loadingText.textContent = messages[step];
-            step = (step + 1) % messages.length;
-        }, 3000); // Altera a mensagem a cada 3 segundos
-        
-        // Salva o intervalo para poder limpar depois
-        loadingOverlay.dataset.intervalId = interval;
-    }
-
-    function hideLoading() {
-        loadingOverlay.style.display = "none";
-        clearInterval(loadingOverlay.dataset.intervalId); // Limpa o intervalo das mensagens
-    }
-
-    uploadBtn.addEventListener("click", function () {
-        showLoading();
-        
-        // Simula o tempo de conversão (substitua por sua requisição real)
-        setTimeout(() => {
-            hideLoading();
-            alert("Conversão concluída!");
-        }, 10000); // Simulando 10 segundos de processamento
-    });
-});
-
 
 
     </script>

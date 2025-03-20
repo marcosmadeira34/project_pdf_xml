@@ -42,8 +42,18 @@ class UploadEProcessarPDFView(View):
         # Converter os arquivos para um dicionário {nome: bytes}
         files_data = {pdf.name: pdf.read() for pdf in files}
 
-        # Enviar para processamento assíncrono
-        task = processar_pdfs.delay(files_data)
+        # Instanciar o processador
+        processor = DocumentAIProcessor()
+
+        # Dividir os envios de pdf em lotes de 20 para evitar erros de limite de memório
+        lotes = processor.dividir_em_lotes(files_data, 20)
+
+        task_ids = []
+
+        for lote in lotes:
+            # Enviar para processamento assíncrono
+            task = processar_pdfs.delay(lote)
+            task_ids.append(task.id)
 
         return JsonResponse({"task_id": task.id, "message": "Processamento iniciado!"})
 

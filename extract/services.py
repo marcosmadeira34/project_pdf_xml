@@ -67,6 +67,11 @@ class DocumentAIProcessor:
         else:
             raise ValueError("Não foi possível carregar as credenciais")
         
+    def dividir_em_lotes(self, arquivos: List[bytes], tamanho_lote: int = 20) -> List[List[bytes]]:
+        """Divide uma lista de arquivos PDF em lotes menores."""
+        return [arquivos[i:i + tamanho_lote] for i in range(0, len(arquivos), tamanho_lote)]
+    
+    
     # método para processar o PDF carregado pelo usuário
     def processar_pdf(self, project_id: str, location: str, processor_id: str, file_content: bytes) -> Dict:
         """Processa o PDF diretamente dos dados binários"""
