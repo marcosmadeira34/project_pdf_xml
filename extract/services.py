@@ -5,7 +5,7 @@ from google.oauth2 import service_account
 from google.protobuf.json_format import MessageToJson
 from dotenv import load_dotenv
 from lxml import etree
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 import base64
 import re
 from datetime import datetime
