@@ -46,7 +46,7 @@ class UploadEProcessarPDFView(View):
         processor = DocumentAIProcessor()
 
         # Dividir os envios de pdf em lotes de 20 para evitar erros de limite de memório
-        lotes = processor.dividir_em_lotes(files_data, 20)
+        lotes = processor.dividir_em_lotes(files_data, tamanho_lote=20)
 
         task_ids = []
 

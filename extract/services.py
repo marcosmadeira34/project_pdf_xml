@@ -67,9 +67,16 @@ class DocumentAIProcessor:
         else:
             raise ValueError("Não foi possível carregar as credenciais")
         
-    def dividir_em_lotes(self, arquivos: List[bytes], tamanho_lote: int = 20) -> List[List[bytes]]:
-        """Divide uma lista de arquivos PDF em lotes menores."""
-        return [arquivos[i:i + tamanho_lote] for i in range(0, len(arquivos), tamanho_lote)]
+    
+    # método para envio de arquivos em lote para processamento evitando erros de limite de memória
+    def dividir_em_lotes(self, arquivos: Dict[str, bytes], tamanho_lote: int) -> List[Dict[str, bytes]]:
+        """Divide um dicionário de arquivos em lotes menores"""
+        chaves = list(arquivos.keys())  # Pegamos apenas os nomes dos arquivos
+        return [
+            {chave: arquivos[chave] for chave in chaves[i:i + tamanho_lote]} 
+            for i in range(0, len(chaves), tamanho_lote)
+        ]
+
     
     
     # método para processar o PDF carregado pelo usuário
