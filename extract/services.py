@@ -180,6 +180,17 @@ class XMLGenerator:
     nsmap = {None: NAMESPACE}
 
     @staticmethod
+    def formatar_valor_monetario(valor: str) -> str:
+        """Formata um valor monetário para o padrão brasileiro."""
+        try:
+            valor_limpo = valor.replace('.', '').replace(',', '.').strip()
+            return "{:.2f}".format(float(valor_limpo))
+        except ValueError:
+            raise ValueError(f"Valor inválido para formatação: {valor}")
+
+
+
+    @staticmethod
     def _adiciona_elemento(parent, tag: str, text: str):
         """Adiciona um elemento XML apenas se houver valor"""
         if text:
@@ -511,10 +522,8 @@ class XMLGenerator:
         valores_servico = etree.SubElement(servico, "Valores")
         
         # ValorServicos
-        valor_servicos = str(dados.get("valorServicos", "0.00"))
-        valor_servicos_formatado = valor_servicos.replace(',', '.').replace(' ', '')  # Remove espaços e converte vírgulas
-        valor_servicos_formatado = "{:.2f}".format(float(valor_servicos_formatado))  # Garante 2 casas decimais
-        etree.SubElement(valores_servico, "ValorServicos").text = valor_servicos_formatado
+        valor_servicos = cls.formatar_valor_monetario(dados.get("valorServicos", "0.00"))
+        etree.SubElement(valores_servico, "ValorServicos").text = valor_servicos
 
         # ValorDeducoes
         valor_deducoes = str(dados.get("deducoes", "0.00"))
