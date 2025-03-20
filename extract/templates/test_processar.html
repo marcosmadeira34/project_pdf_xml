@@ -271,10 +271,10 @@
                     <table border="1" width="100%">
                         <thead>
                             <tr>
-                                <!-- <th>Selecionar</th> -->
                                 <th>Nome do Arquivo</th>
                                 <th>Tamanho</th>
                                 <th>Documento ID</th>
+                                <th>Progresso</th>
                                 <th>Ações</th>
                             </tr>
                         </thead>
@@ -468,6 +468,47 @@
         displayFileTable(this.files);
     });
     
+    
+    function acompanharProgresso(taskId, row) {
+    let progressCell = row.querySelector(".progress-bar");
+    let actionCell = row.querySelector(".action-cell");
+
+    function atualizar() {
+        fetch(`/task-status/${taskId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "processing") {
+                    let percent = (data.processed / data.total) * 100;
+                    progressCell.innerHTML = `<progress value="${percent}" max="100"></progress>`;
+                    setTimeout(atualizar, 2000);  // Atualiza a cada 2 segundos
+                } else if (data.status === "completed") {
+                    actionCell.innerHTML = `<a href="${data.zip_url}" class="btn btn-success">Baixar XML</a>`;
+                }
+            });
+    }
+    atualizar();
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        let tabela = document.getElementById("fileTableBody");
+
+        fetch("/listar-tasks/")  // API que retorna as tarefas pendentes
+            .then(response => response.json())
+            .then(tasks => {
+                tasks.forEach(task => {
+                    let row = document.createElement("tr");
+                    row.innerHTML = `
+                        <td>${task.filename}</td>
+                        <td>${task.size}</td>
+                        <td>${task.document_id}</td>
+                        <td class="progress-bar">Aguardando...</td>
+                        <td class="action-cell"></td>
+                    `;
+                    tabela.appendChild(row);
+                    acompanharProgresso(task.task_id, row);
+                });
+            });
+    });
     
 
 

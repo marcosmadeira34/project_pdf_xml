@@ -23,6 +23,29 @@ from .tasks import processar_pdfs
 load_dotenv()
 print("Variáveis de ambiente carregadas.")
 
+class LoginView(View):
+    """View para exibir o formulário de login."""
+
+    def get(self, request):
+        return render(request, "login_page.html")
+    
+
+    def post(self, request):
+        username = request.POST.get("username")
+        password = request.POST.get("password")
+
+        # Autentica o usuário
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            # Se o login for bem-sucedido, realiza o login e redireciona para a página de upload
+            auth_login(request, user)
+            return redirect("upload-e-processar-pdf")  # Redireciona para a página de upload de PDF
+        else:
+            # Se falhar, retorna um erro
+            messages.error(request, "Usuário ou senha inválidos.")
+            return render(request, "login_page.html")
+        
+
 class UploadEProcessarPDFView(View):
     """View para upload e processamento assíncrono de PDFs."""
 
@@ -57,18 +80,6 @@ class UploadEProcessarPDFView(View):
 
         return JsonResponse({"task_id": task.id, "message": "Processamento iniciado!"})
 
-class TaskStatusView(View):
-    """Verifica o status de uma task do Celery."""
-
-    def get(self, request, task_id):
-        result = AsyncResult(task_id)
-        if result.state == "SUCCESS":
-            zip_url = default_storage.url(result.result)  # URL do ZIP gerado
-            return JsonResponse({"status": "completed", "zip_url": zip_url})
-        return JsonResponse({"status": result.state})
-        
-   
-
 
 class MergePDFsView(View):
     """View para mesclar múltiplos PDFs em um único arquivo."""
@@ -91,24 +102,22 @@ class MergePDFsView(View):
             return response
 
 
-class LoginView(View):
-    """View para exibir o formulário de login."""
+class TaskStatusView(View):
+    """Retorna o status do processamento da task Celery."""
 
-    def get(self, request):
-        return render(request, "login_page.html")
-    
+    def get(self, request, task_id):
+        result = AsyncResult(task_id)
 
-    def post(self, request):
-        username = request.POST.get("username")
-        password = request.POST.get("password")
+        if result.state == "PROGRESS":
+            return JsonResponse({
+                "status": "processing",
+                "processed": result.info.get("processed", 0),
+                "total": result.info.get("total", 1),
+            })
 
-        # Autentica o usuário
-        user = authenticate(request, username=username, password=password)
-        if user is not None:
-            # Se o login for bem-sucedido, realiza o login e redireciona para a página de upload
-            auth_login(request, user)
-            return redirect("upload-e-processar-pdf")  # Redireciona para a página de upload de PDF
-        else:
-            # Se falhar, retorna um erro
-            messages.error(request, "Usuário ou senha inválidos.")
-            return render(request, "login_page.html")
+        if result.state == "SUCCESS":
+            zip_url = default_storage.url(result.result["zip_path"])
+            xml_files = result.result["xml_files"]
+            return JsonResponse({"status": "completed", "zip_url": zip_url, "xml_files": xml_files})
+
+        return JsonResponse({"status": result.state})
