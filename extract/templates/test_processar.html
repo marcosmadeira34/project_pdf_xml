@@ -471,45 +471,56 @@
     
     
     function acompanharProgresso(taskId, row) {
-    let progressCell = row.querySelector(".progress-bar");
+    let progressCell = row.querySelector(".progress-bar");  // Certifique-se de que há um elemento com essa classe
     let actionCell = row.querySelector(".action-cell");
 
     function atualizar() {
         fetch(`/task-status/${taskId}`)
             .then(response => response.json())
             .then(data => {
+                console.log("Status recebido:", data); // Debug para verificar a resposta da API
+                
                 if (data.status === "processing") {
                     let percent = (data.processed / data.total) * 100;
                     progressCell.innerHTML = `<progress value="${percent}" max="100"></progress>`;
                     setTimeout(atualizar, 2000);  // Atualiza a cada 2 segundos
                 } else if (data.status === "completed") {
+                    progressCell.innerHTML = "Concluído ✅"; // Mostra que o processo foi finalizado
                     actionCell.innerHTML = `<a href="${data.zip_url}" class="btn btn-success">Baixar XML</a>`;
+                } else {
+                    progressCell.innerHTML = "Erro ❌";
                 }
+            })
+            .catch(error => {
+                console.error("Erro ao buscar status:", error);
+                progressCell.innerHTML = "Falha ❌";
             });
     }
-    atualizar();
-    }
 
-    document.addEventListener("DOMContentLoaded", function () {
-        let tabela = document.getElementById("fileTableBody");
+    atualizar(); // Chama a função inicialmente
+}
+document.addEventListener("DOMContentLoaded", function () {
+    let tabela = document.getElementById("fileTableBody");
 
-        fetch("/listar-tasks/")  // API que retorna as tarefas pendentes
-            .then(response => response.json())
-            .then(tasks => {
-                tasks.forEach(task => {
-                    let row = document.createElement("tr");
-                    row.innerHTML = `
-                        <td>${task.filename}</td>
-                        <td>${task.size}</td>
-                        <td>${task.document_id}</td>
-                        <td class="progress-bar">Aguardando...</td>
-                        <td class="action-cell"></td>
-                    `;
-                    tabela.appendChild(row);
-                    acompanharProgresso(task.task_id, row);
-                });
+    fetch("/listar-tasks/")  // API que retorna as tarefas pendentes
+        .then(response => response.json())
+        .then(tasks => {
+            tasks.forEach(task => {
+                let row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${task.filename}</td>
+                    <td>${task.size}</td>
+                    <td>${task.document_id}</td>
+                    <td class="progress-bar">Aguardando...</td> <!-- Progresso correto -->
+                    <td class="action-cell"></td> <!-- Corrige a célula vazia -->
+                `;
+                tabela.appendChild(row);
+                acompanharProgresso(task.task_id, row); // Agora passa a linha correta
             });
-    });
+        })
+        .catch(error => console.error("Erro ao listar tarefas:", error));
+});
+
     
 
 
