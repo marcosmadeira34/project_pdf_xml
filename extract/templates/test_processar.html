@@ -361,7 +361,7 @@
             }
             
 
-
+            // Função de conversao de PDF para XML
             uploadBtn.addEventListener("click", () => {
                 if (fileInput.files.length === 0) {
                     message.innerText = "Selecione pelo menos um arquivo!";
@@ -383,27 +383,45 @@
                         "X-CSRFToken": getCookie("csrftoken") // CSRF Token necessário
                     }
                 })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error("Erro no upload");
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.task_id) {
+                        throw new Error("Erro ao iniciar o processamento");
                     }
-                    return response.blob();
-                })
-                .then(blob => {
-                    document.getElementById("loadingOverlay").style.display = "none";
-                    let a = document.createElement("a");
-                    a.href = URL.createObjectURL(blob);
-                    a.download = "xml_convertidos.zip";
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    // message.innerText = "Download concluído!";
+
+                    acompanharProgresso(data.task_id);
                 })
                 .catch(error => {
-                    loadingIndicator.style.display = "none";
+                    document.getElementById("loadingOverlay").style.display = "none";
                     message.innerText = "Erro ao converter os arquivos.";
                 });
             });
+
+            function acompanharProgresso(taskId) {
+                let interval = setInterval(() => {
+                    fetch(`/task-status/${taskId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === "processing") {
+                                message.innerText = `Processando... ${data.processed}/${data.total}`;
+                            } else if (data.status === "completed") {
+                                clearInterval(interval);
+                                document.getElementById("loadingOverlay").style.display = "none";
+
+                                let a = document.createElement("a");
+                                a.href = data.zip_url;
+                                a.download = "xml_convertidos.zip";
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                            } else if (data.status === "failed") {
+                                clearInterval(interval);
+                                document.getElementById("loadingOverlay").style.display = "none";
+                                message.innerText = "Erro ao processar os arquivos.";
+                            }
+                        });
+                }, 2000); // Atualiza a cada 2 segundos
+            }
 
             function getCookie(name) {
                 let cookieValue = null;

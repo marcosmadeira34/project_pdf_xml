@@ -35,7 +35,7 @@ def processar_pdfs(self, files_data):
                 # Adicionar XML ao ZIP
                 xml_filename = os.path.splitext(file_name)[0] + ".xml"
                 zip_file.writestr(xml_filename, xml)
-                xml_files.append(xml_filename)  # Armazena o nome do arquivo gerado
+                xml_files.append(xml_filename)
 
                 processed_files += 1
                 self.update_state(state="PROGRESS", meta={"processed": processed_files, "total": total_files})
@@ -52,4 +52,7 @@ def processar_pdfs(self, files_data):
     zip_path = f"xml_processados/{os.urandom(8).hex()}.zip"
     default_storage.save(zip_path, ContentFile(zip_buffer.getvalue()))
 
-    return {"zip_path": zip_path, "xml_files": xml_files}  # Retorna o caminho do ZIP e lista de XMLs gerados
+    # Atualizar estado como "SUCCESS"
+    self.update_state(state="SUCCESS", meta={"zip_path": zip_path, "xml_files": xml_files})
+
+    return {"zip_path": zip_path, "xml_files": xml_files}

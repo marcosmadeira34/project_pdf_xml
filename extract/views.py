@@ -78,7 +78,7 @@ class UploadEProcessarPDFView(View):
             task = processar_pdfs.delay(lote)
             task_ids.append(task.id)
 
-        return JsonResponse({"task_id": task.id, "message": "Processamento iniciado!"})
+        return JsonResponse({"task_ids": task.ids, "message": "Processamento iniciado!"})
 
 
 class MergePDFsView(View):
