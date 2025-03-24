@@ -49,10 +49,12 @@ def processar_pdfs(self, files_data):
 
     # Salvar o ZIP gerado
     zip_buffer.seek(0)
-    zip_path = f"xml_processados/{os.urandom(8).hex()}.zip"
+    # zip_path = f"xml_processados/{os.urandom(8).hex()}.zip"
+    zip_path = f"media/xml_processados/{os.urandom(8).hex()}.zip"
     default_storage.save(zip_path, ContentFile(zip_buffer.getvalue()))
 
     # Atualizar estado como "SUCCESS"
     self.update_state(state="SUCCESS", meta={"zip_path": zip_path, "xml_files": xml_files})
 
     return {"zip_path": zip_path, "xml_files": xml_files}
+    
