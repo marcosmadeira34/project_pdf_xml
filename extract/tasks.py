@@ -7,7 +7,6 @@ from django.core.files.base import ContentFile
 from .services import DocumentAIProcessor
 from .services import XMLGenerator
 from django.core.files.storage import default_storage
-from django.conf import settings
 
 @shared_task(bind=True)
 def processar_pdfs(self, files_data):
@@ -36,7 +35,7 @@ def processar_pdfs(self, files_data):
                 # Adicionar XML ao ZIP
                 xml_filename = os.path.splitext(file_name)[0] + ".xml"
                 zip_file.writestr(xml_filename, xml)
-                xml_files.append(xml_filename)
+                xml_files.append(xml_filename)  # Armazena o nome do arquivo gerado
 
                 processed_files += 1
                 self.update_state(state="PROGRESS", meta={"processed": processed_files, "total": total_files})
@@ -50,14 +49,7 @@ def processar_pdfs(self, files_data):
 
     # Salvar o ZIP gerado
     zip_buffer.seek(0)
-    zip_folder = os.path.join(settings.MEDIA_ROOT, "xml_processados")
-    os.makedirs(zip_folder, exist_ok=True)  # Garante que a pasta existe
-
-    zip_path = os.path.join("xml_processados", f"{os.urandom(8).hex()}.zip")
-    #zip_path = f"xml_processados/{os.urandom(8).hex()}.zip"
+    zip_path = f"xml_processados/{os.urandom(8).hex()}.zip"
     default_storage.save(zip_path, ContentFile(zip_buffer.getvalue()))
 
-    # Atualizar estado como "SUCCESS"
-    self.update_state(state="SUCCESS", meta={"zip_path": zip_path, "xml_files": xml_files})
-
-    return {"zip_path": zip_path, "xml_files": xml_files}
+    return {"zip_path": zip_path, "xml_files": xml_files}  # Retorna o caminho do ZIP e lista de XMLs gerados
