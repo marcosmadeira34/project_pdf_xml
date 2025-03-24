@@ -510,7 +510,7 @@
     document.addEventListener("DOMContentLoaded", function () {
         let tabela = document.getElementById("fileTableBody");
 
-        fetch("/listar-tasks/")  // API que retorna as tarefas pendentes
+        fetch("{% url 'upload-e-processar-pdf' %}")  // API que retorna as tarefas pendentes
             .then(response => response.json())
             .then(tasks => {
                 tasks.forEach(task => {
