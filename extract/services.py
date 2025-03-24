@@ -209,6 +209,170 @@ class XMLGenerator:
             elem = etree.SubElement(parent, tag)
             elem.text = text
 
+    @classmethod
+    def gerar_xml_abrasf(cls, dados: Dict) -> str:
+        print(f"Dados recebidos para geração do XML: {json.dumps(dados, indent=4, ensure_ascii=False)}")
+
+        # Criação dos elementos principais
+        root = etree.Element("CompNfse", xmlns="http://www.abrasf.org.br/nfse.xsd")
+        nfse = etree.SubElement(root, "Nfse", versao="1.00")
+        inf_nfse = etree.SubElement(nfse, "InfNfse", Id="")
+
+        # Adicionando os campos para 'InfNfse'
+        etree.SubElement(inf_nfse, "Numero").text = dados.get("numero-nota-fiscal", "")
+        codigo_verificacao = dados.get("codigoVerificacao", "")
+        codigo_verificacao_clean = re.sub(r'[^a-zA-Z0-9]', '', codigo_verificacao)
+
+
+        etree.SubElement(inf_nfse, "CodigoVerificacao").text = codigo_verificacao_clean
+        data_emissao = str(dados.get("dataEmissao", ""))
+
+        # Converte a data para o formato desejado
+        try:
+            data_emissao_obj = datetime.strptime(data_emissao, "%d/%m/%Y")  # Parse da data original
+            data_emissao_formatada = data_emissao_obj.strftime("%Y-%m-%dT00:00:00")  # Formato desejado
+        except ValueError:
+            data_emissao_formatada = ""
+
+        # Agora você pode usar a data formatada
+        etree.SubElement(inf_nfse, "DataEmissao").text = data_emissao_formatada
+
+        # Valores da NFS-e
+        valores_nfse = etree.SubElement(inf_nfse, "ValoresNfse")
+        base_calculo = str(dados.get("baseCalculo", ""))
+        # Remove o ponto de milhar e substitui a vírgula por ponto
+        base_calculo_formatada = base_calculo.replace('.', '').replace(',', '.')
+        # Agora você pode usar a string formatada
+        etree.SubElement(valores_nfse, "BaseCalculo").text = base_calculo_formatada
+
+        aliquota = str(dados.get("aliquota", "")).strip()
+
+        # Remove o caractere '%' e substitui a vírgula por ponto
+        aliquota_formatada = aliquota.replace('%', '').replace(',', '.')
+
+        # Tenta converter para float, lançando erro se for inválido
+        if aliquota_formatada:
+            aliquota_float = float(aliquota_formatada)
+        else:
+            raise ValueError(f"Valor inválido para alíquota: {aliquota}")
+
+        etree.SubElement(valores_nfse, "Aliquota").text = str(aliquota_float)
+
+        valor_iss = str(dados.get("valorIss", ""))
+        # Remove o ponto de milhar e substitui a vírgula por ponto
+        valor_iss_formatado = valor_iss.replace('.', '').replace(',', '.')
+        etree.SubElement(valores_nfse, "ValorIss").text = valor_iss_formatado
+        
+        valor_liquido_nfse = str(dados.get("valorLiquido", ""))
+        # Remove o ponto de milhar e substitui a vírgula por ponto
+        valor_liquido_formatado = valor_liquido_nfse.replace('.', '').replace(',', '.')
+        etree.SubElement(valores_nfse, "ValorLiquidoNfse").text = valor_liquido_formatado
+        
+
+        # Dados do prestador
+        prestador_servico = etree.SubElement(inf_nfse, "PrestadorServico")
+        id_prestador = etree.SubElement(prestador_servico, "IdentificacaoPrestador")
+        cpf_cnpj_prestador = etree.SubElement(id_prestador, "CpfCnpj")
+
+        cpf_cnpj_prestador_text = dados.get("cpfCnpjPrestador", "")
+        # Remove caracteres não numéricos
+        cpf_cnpj_prestador_clean = re.sub(r'\D', '', cpf_cnpj_prestador_text)
+        # Verifica se é CPF ou CNPJ
+        if len(cpf_cnpj_prestador_clean) == 11:
+            etree.SubElement(cpf_cnpj_prestador, "Cpf").text = cpf_cnpj_prestador_clean
+        else:
+            etree.SubElement(cpf_cnpj_prestador, "Cnpj").text = cpf_cnpj_prestador_clean
+
+        inscricao_municipal = dados.get("inscricaoMunicipalPrestador", "")
+        # Remove caracteres não numéricos
+        inscricao_municipal_clean = re.sub(r'\D', '', inscricao_municipal)
+        etree.SubElement(id_prestador, "InscricaoMunicipal").text = inscricao_municipal_clean
+        
+        
+        etree.SubElement(prestador_servico, "RazaoSocial").text = dados.get("razaoSocialPrestador")
+        etree.SubElement(prestador_servico, "NomeFantasia").text = dados.get("nomeFantasiaPrestador")
+
+        # Endereço do prestador
+        endereco_prestador = etree.SubElement(prestador_servico, "Endereco")
+        etree.SubElement(endereco_prestador, "Endereco").text = dados.get("enderecoPrestador")
+        etree.SubElement(endereco_prestador, "Numero").text = str(dados.get("numeroPrestador"))
+        etree.SubElement(endereco_prestador, "Bairro").text = dados.get("bairroPrestador")
+        etree.SubElement(endereco_prestador, "CodigoMunicipio").text = str(dados.get("municipioPrestacaoServico", ""))
+        etree.SubElement(endereco_prestador, "CodigoPais").text = str(dados.get("codigoPais", "1058"))
+        cep_prestador = dados.get("cepPrestador", "")
+        # Remove caracteres não numéricos
+        cep_prestador_clean = re.sub(r'\D', '', cep_prestador)
+        etree.SubElement(endereco_prestador, "Cep").text = cep_prestador_clean
+
+        # Contato do prestador
+        contato_prestador = etree.SubElement(prestador_servico, "Contato")
+        etree.SubElement(contato_prestador, "Telefone").text = dados.get("telefonePrestador")
+        etree.SubElement(contato_prestador, "Email").text = dados.get("emailPrestador")
+
+        # Orgão Gerador
+        orgao_gerador = etree.SubElement(inf_nfse, "OrgaoGerador")
+        etree.SubElement(orgao_gerador, "CodigoMunicipio").text = str(dados.get("municipioPrestacaoServico", ""))
+        etree.SubElement(orgao_gerador, "Uf").text = dados.get("ufPrestador")
+
+        # Declaração de Prestação de Serviço
+        declaracao_prestacao_servico = etree.SubElement(inf_nfse, "DeclaracaoPrestacaoServico")
+        inf_declaracao_prestacao_servico = etree.SubElement(declaracao_prestacao_servico, "InfDeclaracaoPrestacaoServico")
+        etree.SubElement(inf_declaracao_prestacao_servico, "Competencia").text = dados.get("competencia", "")
+
+        # Serviço
+        servico = etree.SubElement(inf_declaracao_prestacao_servico, "Servico")
+        valores_servico = etree.SubElement(servico, "Valores")
+        
+        # ValorServicos
+        valor_servicos = cls.formatar_valor_monetario(dados.get("valorServicos", "0.00"))
+        etree.SubElement(valores_servico, "ValorServicos").text = valor_servicos
+
+        # ValorDeducoes
+        valor_deducoes = str(dados.get("deducoes", "0.00"))
+        valor_deducoes_formatado = valor_deducoes.replace(',', '.').replace(' ', '')  # Remove espaços e converte vírgulas
+        valor_deducoes_formatado = "{:.2f}".format(float(valor_deducoes_formatado))  # Garante 2 casas decimais
+        etree.SubElement(valores_servico, "ValorDeducoes").text = valor_deducoes_formatado
+
+        # ValorIr
+        valor_ir = str(dados.get("impostoRenda", "0.00"))
+        valor_ir_formatado = valor_ir.replace(',', '.').replace(' ', '')  # Remove espaços e converte vírgulas
+        valor_ir_formatado = "{:.2f}".format(float(valor_ir_formatado))  # Garante 2 casas decimais
+        etree.SubElement(valores_servico, "ValorIr").text = valor_ir_formatado
+
+        # ValorIss
+        valor_iss_servico = str(dados.get("valorIss", "0.00"))
+        valor_iss_servico_formatado = valor_iss_servico.replace(',', '.').replace(' ', '')  # Remove espaços e converte vírgulas
+        valor_iss_servico_formatado = "{:.2f}".format(float(valor_iss_servico_formatado))  # Garante 2 casas decimais
+        etree.SubElement(valores_servico, "ValorIss").text = valor_iss_servico_formatado
+
+        # Aliquota
+        aliquota_servico = str(dados.get("aliquota", "")).strip()
+        aliquota_servico_formatada = aliquota_servico.replace('%', '').replace(',', '.')  # Remove espaços e converte vírgulas
+        
+        if aliquota_servico_formatada:
+            aliquota_servico_float = float(aliquota_servico_formatada)
+        else:
+            raise ValueError(f"Valor inválido para alíquota: {aliquota_servico}")
+        etree.SubElement(valores_servico, "Aliquota").text = str(aliquota_servico_float)    
+
+        # IssRetido
+        iss_retido = str(dados.get("iss_retido", "0.00"))
+        iss_retido_formatado = iss_retido.replace(',', '.').replace(' ', '')  # Remove espaços e converte vírgulas
+        iss_retido_formatado = "{:.2f}".format(float(iss_retido_formatado))  # Garante 2 casas decimais
+        etree.SubElement(valores_servico, "IssRetido").text = iss_retido_formatado
+
+        etree.SubElement(servico, "ItemListaServico").text = re.sub(r'[^\w\s]', '', dados.get("item_lista_servico", ""))
+        etree.SubElement(servico, "CodigoCnae").text = re.sub(r'[^\w\s]', '', dados.get("codigo_cnae", ""))
+        etree.SubElement(servico, "Discriminacao").text = dados.get("Discriminacao", "")
+        etree.SubElement(servico, "CodigoMunicipio").text = str(dados.get("municipioPrestacaoServico", ""))
+        etree.SubElement(servico, "CodigoPais").text = str(dados.get("codigoPais", "1058"))
+        etree.SubElement(servico, "ExigibilidadeISS").text = str(dados.get("exigibilidade_iss", ""))
+        etree.SubElement(servico, "MunicipioIncidencia").text = str(dados.get("municipioPrestacaoServico", ""))
+
+        # Gerando o XML em formato string
+        xml_str = etree.tostring(root, pretty_print=True, encoding="UTF-8").decode("utf-8")
+        print(f"XML gerado: {xml_str}")
+        return xml_str
 
     # XML ABRASF versão 2.04
     #@classmethod
@@ -419,170 +583,7 @@ class XMLGenerator:
     
 
     # XML ABRASF versão 1.00
-    @classmethod
-    def gerar_xml_abrasf(cls, dados: Dict) -> str:
-        print(f"Dados recebidos para geração do XML: {json.dumps(dados, indent=4, ensure_ascii=False)}")
-
-        # Criação dos elementos principais
-        root = etree.Element("CompNfse", xmlns="http://www.abrasf.org.br/nfse.xsd")
-        nfse = etree.SubElement(root, "Nfse", versao="1.00")
-        inf_nfse = etree.SubElement(nfse, "InfNfse", Id="")
-
-        # Adicionando os campos para 'InfNfse'
-        etree.SubElement(inf_nfse, "Numero").text = dados.get("numero-nota-fiscal", "")
-        codigo_verificacao = dados.get("codigoVerificacao", "")
-        codigo_verificacao_clean = re.sub(r'[^a-zA-Z0-9]', '', codigo_verificacao)
-
-
-        etree.SubElement(inf_nfse, "CodigoVerificacao").text = codigo_verificacao_clean
-        data_emissao = str(dados.get("dataEmissao", ""))
-
-        # Converte a data para o formato desejado
-        try:
-            data_emissao_obj = datetime.strptime(data_emissao, "%d/%m/%Y")  # Parse da data original
-            data_emissao_formatada = data_emissao_obj.strftime("%Y-%m-%dT00:00:00")  # Formato desejado
-        except ValueError:
-            data_emissao_formatada = ""
-
-        # Agora você pode usar a data formatada
-        etree.SubElement(inf_nfse, "DataEmissao").text = data_emissao_formatada
-
-        # Valores da NFS-e
-        valores_nfse = etree.SubElement(inf_nfse, "ValoresNfse")
-        base_calculo = str(dados.get("baseCalculo", ""))
-        # Remove o ponto de milhar e substitui a vírgula por ponto
-        base_calculo_formatada = base_calculo.replace('.', '').replace(',', '.')
-        # Agora você pode usar a string formatada
-        etree.SubElement(valores_nfse, "BaseCalculo").text = base_calculo_formatada
-
-        aliquota = str(dados.get("aliquota", "")).strip()
-
-        # Remove o caractere '%' e substitui a vírgula por ponto
-        aliquota_formatada = aliquota.replace('%', '').replace(',', '.')
-
-        # Tenta converter para float, lançando erro se for inválido
-        if aliquota_formatada:
-            aliquota_float = float(aliquota_formatada)
-        else:
-            raise ValueError(f"Valor inválido para alíquota: {aliquota}")
-
-        etree.SubElement(valores_nfse, "Aliquota").text = str(aliquota_float)
-
-        valor_iss = str(dados.get("valorIss", ""))
-        # Remove o ponto de milhar e substitui a vírgula por ponto
-        valor_iss_formatado = valor_iss.replace('.', '').replace(',', '.')
-        etree.SubElement(valores_nfse, "ValorIss").text = valor_iss_formatado
-        
-        valor_liquido_nfse = str(dados.get("valorLiquido", ""))
-        # Remove o ponto de milhar e substitui a vírgula por ponto
-        valor_liquido_formatado = valor_liquido_nfse.replace('.', '').replace(',', '.')
-        etree.SubElement(valores_nfse, "ValorLiquidoNfse").text = valor_liquido_formatado
-        
-
-        # Dados do prestador
-        prestador_servico = etree.SubElement(inf_nfse, "PrestadorServico")
-        id_prestador = etree.SubElement(prestador_servico, "IdentificacaoPrestador")
-        cpf_cnpj_prestador = etree.SubElement(id_prestador, "CpfCnpj")
-
-        cpf_cnpj_prestador_text = dados.get("cpfCnpjPrestador", "")
-        # Remove caracteres não numéricos
-        cpf_cnpj_prestador_clean = re.sub(r'\D', '', cpf_cnpj_prestador_text)
-        # Verifica se é CPF ou CNPJ
-        if len(cpf_cnpj_prestador_clean) == 11:
-            etree.SubElement(cpf_cnpj_prestador, "Cpf").text = cpf_cnpj_prestador_clean
-        else:
-            etree.SubElement(cpf_cnpj_prestador, "Cnpj").text = cpf_cnpj_prestador_clean
-
-        inscricao_municipal = dados.get("inscricaoMunicipalPrestador", "")
-        # Remove caracteres não numéricos
-        inscricao_municipal_clean = re.sub(r'\D', '', inscricao_municipal)
-        etree.SubElement(id_prestador, "InscricaoMunicipal").text = inscricao_municipal_clean
-        
-        
-        etree.SubElement(prestador_servico, "RazaoSocial").text = dados.get("razaoSocialPrestador")
-        etree.SubElement(prestador_servico, "NomeFantasia").text = dados.get("nomeFantasiaPrestador")
-
-        # Endereço do prestador
-        endereco_prestador = etree.SubElement(prestador_servico, "Endereco")
-        etree.SubElement(endereco_prestador, "Endereco").text = dados.get("enderecoPrestador")
-        etree.SubElement(endereco_prestador, "Numero").text = str(dados.get("numeroPrestador"))
-        etree.SubElement(endereco_prestador, "Bairro").text = dados.get("bairroPrestador")
-        etree.SubElement(endereco_prestador, "CodigoMunicipio").text = str(dados.get("municipioPrestacaoServico", ""))
-        etree.SubElement(endereco_prestador, "CodigoPais").text = str(dados.get("codigoPais", "1058"))
-        cep_prestador = dados.get("cepPrestador", "")
-        # Remove caracteres não numéricos
-        cep_prestador_clean = re.sub(r'\D', '', cep_prestador)
-        etree.SubElement(endereco_prestador, "Cep").text = cep_prestador_clean
-
-        # Contato do prestador
-        contato_prestador = etree.SubElement(prestador_servico, "Contato")
-        etree.SubElement(contato_prestador, "Telefone").text = dados.get("telefonePrestador")
-        etree.SubElement(contato_prestador, "Email").text = dados.get("emailPrestador")
-
-        # Orgão Gerador
-        orgao_gerador = etree.SubElement(inf_nfse, "OrgaoGerador")
-        etree.SubElement(orgao_gerador, "CodigoMunicipio").text = str(dados.get("municipioPrestacaoServico", ""))
-        etree.SubElement(orgao_gerador, "Uf").text = dados.get("ufPrestador")
-
-        # Declaração de Prestação de Serviço
-        declaracao_prestacao_servico = etree.SubElement(inf_nfse, "DeclaracaoPrestacaoServico")
-        inf_declaracao_prestacao_servico = etree.SubElement(declaracao_prestacao_servico, "InfDeclaracaoPrestacaoServico")
-        etree.SubElement(inf_declaracao_prestacao_servico, "Competencia").text = dados.get("competencia", "")
-
-        # Serviço
-        servico = etree.SubElement(inf_declaracao_prestacao_servico, "Servico")
-        valores_servico = etree.SubElement(servico, "Valores")
-        
-        # ValorServicos
-        valor_servicos = cls.formatar_valor_monetario(dados.get("valorServicos", "0.00"))
-        etree.SubElement(valores_servico, "ValorServicos").text = valor_servicos
-
-        # ValorDeducoes
-        valor_deducoes = str(dados.get("deducoes", "0.00"))
-        valor_deducoes_formatado = valor_deducoes.replace(',', '.').replace(' ', '')  # Remove espaços e converte vírgulas
-        valor_deducoes_formatado = "{:.2f}".format(float(valor_deducoes_formatado))  # Garante 2 casas decimais
-        etree.SubElement(valores_servico, "ValorDeducoes").text = valor_deducoes_formatado
-
-        # ValorIr
-        valor_ir = str(dados.get("impostoRenda", "0.00"))
-        valor_ir_formatado = valor_ir.replace(',', '.').replace(' ', '')  # Remove espaços e converte vírgulas
-        valor_ir_formatado = "{:.2f}".format(float(valor_ir_formatado))  # Garante 2 casas decimais
-        etree.SubElement(valores_servico, "ValorIr").text = valor_ir_formatado
-
-        # ValorIss
-        valor_iss_servico = str(dados.get("valorIss", "0.00"))
-        valor_iss_servico_formatado = valor_iss_servico.replace(',', '.').replace(' ', '')  # Remove espaços e converte vírgulas
-        valor_iss_servico_formatado = "{:.2f}".format(float(valor_iss_servico_formatado))  # Garante 2 casas decimais
-        etree.SubElement(valores_servico, "ValorIss").text = valor_iss_servico_formatado
-
-        # Aliquota
-        aliquota_servico = str(dados.get("aliquota", "")).strip()
-        aliquota_servico_formatada = aliquota_servico.replace('%', '').replace(',', '.')  # Remove espaços e converte vírgulas
-        
-        if aliquota_servico_formatada:
-            aliquota_servico_float = float(aliquota_servico_formatada)
-        else:
-            raise ValueError(f"Valor inválido para alíquota: {aliquota_servico}")
-        etree.SubElement(valores_servico, "Aliquota").text = str(aliquota_servico_float)    
-
-        # IssRetido
-        iss_retido = str(dados.get("iss_retido", "0.00"))
-        iss_retido_formatado = iss_retido.replace(',', '.').replace(' ', '')  # Remove espaços e converte vírgulas
-        iss_retido_formatado = "{:.2f}".format(float(iss_retido_formatado))  # Garante 2 casas decimais
-        etree.SubElement(valores_servico, "IssRetido").text = iss_retido_formatado
-
-        etree.SubElement(servico, "ItemListaServico").text = re.sub(r'[^\w\s]', '', dados.get("item_lista_servico", ""))
-        etree.SubElement(servico, "CodigoCnae").text = re.sub(r'[^\w\s]', '', dados.get("codigo_cnae", ""))
-        etree.SubElement(servico, "Discriminacao").text = dados.get("Discriminacao", "")
-        etree.SubElement(servico, "CodigoMunicipio").text = str(dados.get("municipioPrestacaoServico", ""))
-        etree.SubElement(servico, "CodigoPais").text = str(dados.get("codigoPais", "1058"))
-        etree.SubElement(servico, "ExigibilidadeISS").text = str(dados.get("exigibilidade_iss", ""))
-        etree.SubElement(servico, "MunicipioIncidencia").text = str(dados.get("municipioPrestacaoServico", ""))
-
-        # Gerando o XML em formato string
-        xml_str = etree.tostring(root, pretty_print=True, encoding="UTF-8").decode("utf-8")
-        print(f"XML gerado: {xml_str}")
-        return xml_str
+    
 
 
 

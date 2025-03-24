@@ -380,22 +380,24 @@
                     method: "POST",
                     body: formData,
                     headers: {
-                        "X-CSRFToken": getCookie("csrftoken") // CSRF Token necessário
+                        "X-CSRFToken": getCookie("csrftoken")
                     }
                 })
                 .then(response => response.json())
                 .then(data => {
-                    if (!data.task_id) {
+                    console.log("Resposta do servidor:", data);
+                    if (!data.task_ids) {
                         throw new Error("Erro ao iniciar o processamento");
                     }
-
-                    acompanharProgresso(data.task_id);
+                    acompanharProgresso(data.task_ids[0]);  // Pega o primeiro task_id
                 })
                 .catch(error => {
+                    console.error("Erro na requisição:", error);
                     document.getElementById("loadingOverlay").style.display = "none";
                     message.innerText = "Erro ao converter os arquivos.";
                 });
-            });
+
+                            });
 
             function acompanharProgresso(taskId) {
                 let interval = setInterval(() => {
