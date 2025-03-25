@@ -371,7 +371,9 @@
 
     uploadBtn.addEventListener("click", () => {
         if (fileInput.files.length === 0) {
-            message.innerText = "Selecione pelo menos um arquivo!";
+            // message.innerText = "Selecione pelo menos um arquivo!";
+            alert("Selecione pelo menos um arquivo!");
+
             return;
         }
 
@@ -405,35 +407,42 @@
         fetch(`/task-status/${taskId}/`)
             .then(response => response.json())
             .then(data => {
-                let message = document.querySelector("#loadingOverlay p"); // Seleciona o parágrafo dentro do loadingOverlay
+                let message = document.querySelector("#loadingOverlay p");
 
                 if (data.status === "processing") {
-                    message.innerText = `Processando nota... ${data.processed}/${data.total}`;
+                    message.innerText = `Processando... ${data.processed}/${data.total}`;
+                } else if (data.status === "completed") {
+                    clearInterval(interval);
+
+                    // 🔹 NÃO ESCONDE o overlay ainda, espera baixar!
+                    message.innerText = "Processamento concluído! Preparando download...";
+                    // Destroi a mensagem de processamento concluido
+                    setTimeout(() => {
+                        message.innerText = "";
+                    }, 3000);
+
+                    baixarArquivo(data.zip_url, () => {
+                        document.getElementById("loadingOverlay").style.display = "none";
+                    });
                 } else {
                     clearInterval(interval);
-                    document.getElementById("loadingOverlay").style.display = "none";
-                    
-                    if (data.status === "completed") {
-                        // Redireciona o usuário para o download do ZIP
-                        window.location.href = `/download-zip/${taskId}/`;
-                        // baixarArquivo(data.zip_url);
-                    } else {
-                        // message.innerText = "Erro ao processar os arquivos.";
-                        document.getElementById("loadingOverlay").innerText = "Erro ao processar os arquivos.";
-                    }
+                    message.innerText = "Erro ao processar os arquivos.";
                 }
             });
     }, 2000);
 }
 
-    function baixarArquivo(url) {
-        let a = document.createElement("a");
-        a.href = url;
-        a.download = "xml_convertidos.zip";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-    }
+function baixarArquivo(url, callback) {
+    let link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "arquivos_processados.zip");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // 🔹 Espera um pouco para garantir que o download começou antes de fechar
+    setTimeout(callback, 3000);
+}
 
     function getCSRFToken() {
         return document.cookie.split("; ").find(row => row.startsWith("csrftoken="))?.split("=")[1] || "";
