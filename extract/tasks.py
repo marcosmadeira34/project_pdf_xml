@@ -19,6 +19,7 @@ def processar_pdfs(self, files_data):
     total_files = len(files_data)
     processed_files = 0
     xml_files = []  # Lista para armazenar os nomes dos arquivos XML
+    erros = []  # Lista para armazenar arquivos que falharam
 
     # Criar buffer para ZIP
     zip_buffer = io.BytesIO()
@@ -27,6 +28,9 @@ def processar_pdfs(self, files_data):
         for file_name, pdf_bytes in files_data.items():
             try:
                 print(f"Processando: {file_name}...")
+
+                # Atualiza o progresso antes de iniciar o processamento
+                self.update_state(state="PROGRESS", meta={"processed": processed_files, "total": total_files})
 
                 document_json = processor.processar_pdf(project_id, location, processor_id, pdf_bytes)
                 dados_extraidos = processor.mapear_campos(document_json)
@@ -38,18 +42,23 @@ def processar_pdfs(self, files_data):
                 xml_files.append(xml_filename)  # Armazena o nome do arquivo gerado
 
                 processed_files += 1
-                self.update_state(state="PROGRESS", meta={"processed": processed_files, "total": total_files})
 
             except SoftTimeLimitExceeded:
                 print(f"Timeout ao processar {file_name}")
+                erros.append(file_name)
                 break
             except Exception as e:
                 print(f"Erro ao processar {file_name}: {e}")
+                erros.append(file_name)
                 continue
 
     # Salvar o ZIP gerado
     zip_buffer.seek(0)
-    zip_path = f"xml_processados/{os.urandom(8).hex()}.zip"
+    zip_path = f"xml_processados/{processed_files}_{total_files}.zip"  # Nome mais rastreável
     default_storage.save(zip_path, ContentFile(zip_buffer.getvalue()))
 
-    return {"zip_path": zip_path, "xml_files": xml_files}  # Retorna o caminho do ZIP e lista de XMLs gerados
+    return {
+        "zip_path": zip_path,
+        "xml_files": xml_files,
+        "erros": erros  # Retorna os arquivos que falharam
+    }

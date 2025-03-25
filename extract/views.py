@@ -68,13 +68,20 @@ class UploadEProcessarPDFView(View):
         # Instanciar o processador
         processor = DocumentAIProcessor()
 
+        # Definir limite de segurança para evitar sobrecarga
+        max_lotes = 10  # Ajuste conforme necessário
+
         # Dividir os envios de pdf em lotes de 20 para evitar erros de limite de memório
         lotes = processor.dividir_em_lotes(files_data, tamanho_lote=20)
+
+        if len(lotes) > max_lotes:
+            return JsonResponse({"error": f"Limite de {max_lotes} lotes excedido."}, status=400)
 
         task_ids = []
 
         for lote in lotes:
             # Enviar para processamento assíncrono
+            print(f'Enviando lote de {len(lote)} PDFs para processamento...')
             task = processar_pdfs.delay(lote)
             task_ids.append(task.id)
 

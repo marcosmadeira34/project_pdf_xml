@@ -38,7 +38,7 @@ class CredentialsLoader:
 
         # Se não for um caminho válido, assume que é um JSON codificado em Base64
         try:
-            print("Detectado formato Base64, decodificando credenciais...")
+            # print("Detectado formato Base64, decodificando credenciais...")
             credentials_json = base64.b64decode(credentials_env).decode("utf-8")
 
             # Salva temporariamente no sistema de arquivos
@@ -92,7 +92,7 @@ class DocumentAIProcessor:
         try:
             result = self.client.process_document(request=request)
             document_obj = result.document
-            print(f"Aqui está o resultado: {document_obj.text}")
+            # print(f"Aqui está o resultado: {document_obj.text}")
             return json.loads(MessageToJson(document_obj._pb))
         except Exception as e:
             print(f"Erro ao processar o documento: {e}")
@@ -170,7 +170,7 @@ class DocumentAIProcessor:
         for entidade in document_json.get("entities", []):
             tipo = entidade.get("type")
             chave = mapeamento.get(tipo)
-            print(f"Tipo encontrado: {tipo}, chave mapeada: {chave}")
+            # print(f"Tipo encontrado: {tipo}, chave mapeada: {chave}")
             if chave:
                 # Pode haver casos em que o mesmo campo seja identificado mais de uma vez;
                 # aqui você pode definir como tratar isso (por exemplo, mantendo a primeira ocorrência).
