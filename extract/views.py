@@ -19,6 +19,8 @@ from django.http import JsonResponse
 from django.core.files.storage import default_storage
 from celery.result import AsyncResult
 from .tasks import processar_pdfs
+import base64
+
 
 load_dotenv()
 print("Variáveis de ambiente carregadas.")
@@ -108,7 +110,7 @@ class MergePDFsView(View):
 
 
 class TaskStatusView(View):
-    """Retorna o status do processamento da task Celery."""
+    """Retorna o status do processamento da task Celery e permite o download do ZIP."""
 
     def get(self, request, task_id):
         result = AsyncResult(task_id)
@@ -121,11 +123,33 @@ class TaskStatusView(View):
             })
 
         if result.state == "SUCCESS" and result.result:
-            zip_path = result.result.get("zip_path", "")
-            if not zip_path:
+            zip_bytes_base64 = result.result.get("zip_bytes", "")
+            if not zip_bytes_base64:
                 return JsonResponse({"status": "error", "message": "ZIP não encontrado."})
 
-            zip_url = default_storage.url(zip_path)
-            return JsonResponse({"status": "completed", "zip_url": zip_url, "xml_files": result.result["xml_files"]})
+            return JsonResponse({
+                "status": "completed",
+                "zip_data": zip_bytes_base64,  # Envia os bytes do ZIP em Base64
+                "xml_files": result.result.get("xml_files", [])
+            })
 
         return JsonResponse({"status": result.state, "message": "Processamento em andamento ou erro."})
+    
+
+class DownloadZipView(View):
+    """Recebe o ZIP Base64 da task e retorna como um arquivo para o usuário."""
+    
+    def get(self, request, task_id):
+        result = AsyncResult(task_id)
+
+        if result.state == "SUCCESS" and result.result:
+            zip_bytes_base64 = result.result.get("zip_bytes", "")
+            if not zip_bytes_base64:
+                return HttpResponse("Erro: Arquivo ZIP não encontrado.", status=404)
+
+            zip_bytes = base64.b64decode(zip_bytes_base64)  # Decodifica os bytes
+            response = HttpResponse(zip_bytes, content_type="application/zip")
+            response["Content-Disposition"] = 'attachment; filename="arquivos_processados.zip"'
+            return response
+
+        return HttpResponse("A tarefa ainda está em processamento ou falhou.", status=400)

@@ -416,12 +416,14 @@
 
                     // 🔹 NÃO ESCONDE o overlay ainda, espera baixar!
                     message.innerText = "Processamento concluído! Preparando download...";
-                    // Destroi a mensagem de processamento concluido
+
+                    // Destroi a mensagem de processamento concluído
                     setTimeout(() => {
                         message.innerText = "";
                     }, 3000);
 
-                    baixarArquivo(data.zip_url, () => {
+                    // 🔹 Modifica para chamar a nova URL de download
+                    baixarArquivo(`/download-zip/${taskId}/`, () => {
                         document.getElementById("loadingOverlay").style.display = "none";
                     });
                 } else {
@@ -434,8 +436,8 @@
 
 function baixarArquivo(url, callback) {
     let link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", "arquivos_processados.zip");
+    link.href = url;  // A URL agora é a URL de download no servidor
+    link.setAttribute("download", "pdf_to_xml.zip");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

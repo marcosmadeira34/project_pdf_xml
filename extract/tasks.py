@@ -7,6 +7,7 @@ from django.core.files.base import ContentFile
 from .services import DocumentAIProcessor
 from .services import XMLGenerator
 from django.core.files.storage import default_storage
+import base64
 
 @shared_task(bind=True)
 def processar_pdfs(self, files_data):
@@ -18,7 +19,6 @@ def processar_pdfs(self, files_data):
 
     total_files = len(files_data)
     processed_files = 0
-    xml_files = []  # Lista para armazenar os nomes dos arquivos XML
     erros = []  # Lista para armazenar arquivos que falharam
 
     # Criar buffer para ZIP
@@ -29,7 +29,6 @@ def processar_pdfs(self, files_data):
             try:
                 print(f"Processando: {file_name}...")
 
-                # Atualiza o progresso antes de iniciar o processamento
                 self.update_state(state="PROGRESS", meta={"processed": processed_files, "total": total_files})
 
                 document_json = processor.processar_pdf(project_id, location, processor_id, pdf_bytes)
@@ -39,7 +38,6 @@ def processar_pdfs(self, files_data):
                 # Adicionar XML ao ZIP
                 xml_filename = os.path.splitext(file_name)[0] + ".xml"
                 zip_file.writestr(xml_filename, xml)
-                xml_files.append(xml_filename)  # Armazena o nome do arquivo gerado
 
                 processed_files += 1
 
@@ -52,13 +50,9 @@ def processar_pdfs(self, files_data):
                 erros.append(file_name)
                 continue
 
-    # Salvar o ZIP gerado
-    zip_buffer.seek(0)
-    zip_path = f"xml_processados/{processed_files}_{total_files}.zip"  # Nome mais rastreável
-    default_storage.save(zip_path, ContentFile(zip_buffer.getvalue()))
+    zip_buffer.seek(0)  # Posiciona o ponteiro no início do buffer
 
     return {
-        "zip_path": zip_path,
-        "xml_files": xml_files,
-        "erros": erros  # Retorna os arquivos que falharam
+        "zip_bytes": base64.b64encode(zip_buffer.getvalue()).decode(),  # Retorna os bytes como string Base64
+        "erros": erros
     }
