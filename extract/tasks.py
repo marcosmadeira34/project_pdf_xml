@@ -10,7 +10,7 @@ from django.core.files.storage import default_storage
 
 @shared_task(bind=True)
 def processar_pdfs(self, files_data):
-    """Processa múltiplos PDFs, gera XMLs e cria um ZIP."""
+    """Processa múltiplos PDFs, gera XMLs e retorna um ZIP como bytes."""
     processor = DocumentAIProcessor()
     project_id = os.getenv("PROJECT_ID")
     location = os.getenv("LOCATION")
@@ -52,13 +52,12 @@ def processar_pdfs(self, files_data):
                 erros.append(file_name)
                 continue
 
-    # Salvar o ZIP gerado
+    # Finalizar ZIP
     zip_buffer.seek(0)
-    zip_path = f"xml_processados/{processed_files}_{total_files}.zip"  # Nome mais rastreável
-    default_storage.save(zip_path, ContentFile(zip_buffer.getvalue()))
 
+    # Retorna os bytes do ZIP
     return {
-        "zip_path": zip_path,
+        "zip_bytes": zip_buffer.getvalue(),  # Retorna o conteúdo do ZIP
         "xml_files": xml_files,
         "erros": erros  # Retorna os arquivos que falharam
     }

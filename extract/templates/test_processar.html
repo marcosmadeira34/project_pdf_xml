@@ -414,9 +414,12 @@
                     document.getElementById("loadingOverlay").style.display = "none";
                     
                     if (data.status === "completed") {
-                        baixarArquivo(data.zip_url);
+                        // Redireciona o usuário para o download do ZIP
+                        window.location.href = `/download-zip/${taskId}/`;
+                        // baixarArquivo(data.zip_url);
                     } else {
-                        message.innerText = "Erro ao processar os arquivos.";
+                        // message.innerText = "Erro ao processar os arquivos.";
+                        document.getElementById("loadingOverlay").innerText = "Erro ao processar os arquivos.";
                     }
                 }
             });

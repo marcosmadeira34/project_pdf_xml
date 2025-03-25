@@ -2,7 +2,7 @@ from django.shortcuts import render
 
 # Create your views here.
 from django.shortcuts import render, redirect
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, FileResponse
 from django.views import View
 from .services import DocumentAIProcessor, XMLGenerator
 from django.contrib.auth import authenticate, login as auth_login
@@ -116,19 +116,18 @@ class TaskStatusView(View):
     def get(self, request, task_id):
         result = AsyncResult(task_id)
 
-        if result.state == "PROGRESS":
-            return JsonResponse({
-                "status": "processing",
-                "processed": result.info.get("processed", 0),
-                "total": result.info.get("total", 1),
-            })
-
         if result.state == "SUCCESS" and result.result:
-            zip_path = result.result.get("zip_path", "")
-            if not zip_path:
-                return JsonResponse({"status": "error", "message": "ZIP não encontrado."})
+            zip_bytes = result.result.get("zip_bytes")
+            if not zip_bytes:
+                return JsonResponse({"status": "error", "message": "Erro ao gerar o ZIP."})
 
-            zip_url = default_storage.url(zip_path)
-            return JsonResponse({"status": "completed", "zip_url": zip_url, "xml_files": result.result["xml_files"]})
+            # Criar buffer com os bytes do ZIP
+            zip_buffer = io.BytesIO(zip_bytes)
+            zip_buffer.seek(0)
+
+            # Retorna o arquivo como resposta sem salvar
+            response = FileResponse(zip_buffer, content_type="application/zip")
+            response["Content-Disposition"] = 'attachment; filename="arquivos_processados.zip"'
+            return response
 
         return JsonResponse({"status": result.state, "message": "Processamento em andamento ou erro."})
