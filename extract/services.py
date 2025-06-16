@@ -20,6 +20,7 @@ class CredentialsLoader:
     @staticmethod
     def loader_credentials() -> Optional[service_account.Credentials]:
         credentials_env = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+        print(f'Carregado credenciais do ambiente: {credentials_env}')
 
         if not credentials_env:
             print("Variável de ambiente GOOGLE_APPLICATION_CREDENTIALS não definida")

@@ -8,6 +8,9 @@ from .services import DocumentAIProcessor
 from .services import XMLGenerator
 from django.core.files.storage import default_storage
 import base64
+import logging
+
+logger = logging.getLogger(__name__)
 
 @shared_task(bind=True)
 def processar_pdfs(self, files_data):
@@ -16,6 +19,15 @@ def processar_pdfs(self, files_data):
     project_id = os.getenv("PROJECT_ID")
     location = os.getenv("LOCATION")
     processor_id = os.getenv("PROCESSOR_ID")
+
+    print(f"Iniciando processamento com project_id={project_id}, location={location}, processor_id={processor_id}")
+
+    if not project_id or not location or not processor_id:
+        raise ValueError("As variáveis de ambiente PROJECT_ID, LOCATION e PROCESSOR_ID devem estar definidas.")
+
+    # Verifica se files_data é um dicionário
+    if not isinstance(files_data, dict):
+        raise ValueError("files_data deve ser um dicionário com nomes de arquivos como chaves e bytes como valores.")
 
     total_files = len(files_data)
     processed_files = 0
