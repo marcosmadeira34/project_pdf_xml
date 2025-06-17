@@ -248,7 +248,31 @@
   </head>
 
   <body>
-    <button class="theme-toggle" onclick="toggleTheme()">🌙Tema</button>
+    <!-- <button class="theme-toggle" onclick="toggleTheme()">🌙Tema</button> -->
+    <a
+      href="{% url 'logout' %}"
+      class="theme-toggle"
+      style="
+        /* position: absolute; */
+        /* top: 20px; */
+        right: 20px;
+        background: linear-gradient(90deg, #034ff1 60%, #0f23d6 100%);
+        color: #fff;
+        padding: 5px 24px;
+        /* border-radius: 6px; */
+        font-size: 12px;
+        /* font-weight: bold; */
+        text-decoration: none;
+        box-shadow: 0 2px 8px rgba(3, 79, 241, 0.08);
+        transition: background 0.2s, box-shadow 0.2s, color 0.2s;
+        border: none;
+        z-index: 100;
+      "
+      onmouseover="this.style.background='#0056b3'; this.style.color='#fff';"
+      onmouseout="this.style.background='linear-gradient(90deg, #034ff1 60%, #0f23d6 100%)'; this.style.color='#fff';"
+    >
+      Logout
+    </a>
 
     <div class="main-content">
       <!-- Conteúdo à esquerda -->

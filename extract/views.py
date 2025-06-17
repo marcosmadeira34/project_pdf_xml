@@ -20,6 +20,7 @@ from django.core.files.storage import default_storage
 from celery.result import AsyncResult
 from .tasks import processar_pdfs
 import base64
+from datetime import datetime
 
 
 load_dotenv()
@@ -46,7 +47,18 @@ class LoginView(View):
             # Se falhar, retorna um erro
             messages.error(request, "Usuário ou senha inválidos.")
             return render(request, "login_page.html")
-        
+
+
+class LogoutView(View):
+    """View para realizar o logout do usuário."""
+    
+    @method_decorator(login_required)
+    def get(self, request):
+        """Realiza o logout e redireciona para a página de login."""
+        from django.contrib.auth import logout
+        logout(request)
+        return redirect("login")
+    
 
 class UploadEProcessarPDFView(View):
     """View para upload e processamento assíncrono de PDFs."""
@@ -85,7 +97,6 @@ class UploadEProcessarPDFView(View):
             task_ids.append(task.id)
 
         return JsonResponse({"task_ids": task_ids, "message": "Processamento iniciado!"})
-        
         
 
 class MergePDFsView(View):
@@ -149,7 +160,8 @@ class DownloadZipView(View):
 
             zip_bytes = base64.b64decode(zip_bytes_base64)  # Decodifica os bytes
             response = HttpResponse(zip_bytes, content_type="application/zip")
-            response["Content-Disposition"] = 'attachment; filename="arquivos_processados.zip"'
+            now = datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
+            response["Content-Disposition"] = f'attachment; filename="nfse_convertido_{now}.zip"'
             return response
 
         return HttpResponse("A tarefa ainda está em processamento ou falhou.", status=400)
