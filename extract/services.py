@@ -9,6 +9,14 @@ from typing import Dict, Optional, List
 import base64
 import re
 from datetime import datetime
+import pandas as pd
+from dateutil.parser import parse
+import logging
+
+# Configuração do logger
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 # carrega as variáveis de ambiente
 load_dotenv()
@@ -210,6 +218,45 @@ class XMLGenerator:
             elem = etree.SubElement(parent, tag)
             elem.text = text
 
+
+
+    @staticmethod
+    def validar_dados_criticos(dados, campo_nome: str, numero_nf_key='numero-nota-fiscal',
+                               prestador_key="razaoSocialPrestador"):
+        """
+        Valida e formata um valor monetário extraído do dicionário `dados`.
+        Emite alertas caso esteja ausente ou inválido.
+
+        :param dados: dicionário com os dados da nota fiscal
+        :param campo_nome: nome da chave no dicionário que contém o valor
+        :param numero_nf_key: chave que contém o número da nota fiscal (para log)
+        :param prestador_key: chave que contém o nome do prestador (para log)
+        :return: valor formatado como string (ex: '123.45') ou string vazia se inválido
+        """
+        valor = str(dados.get(campo_nome, "")).strip()
+        numero_nf = dados.get(numero_nf_key, "")
+        prestador = dados.get(prestador_key, "")
+
+        if not valor:
+            logger.warning(
+                f"[AVISO] Campo '{campo_nome}' ausente na nota {numero_nf} | Prestador: {prestador}"
+            )
+            return ""
+
+        try:
+            valor_formatado = valor.replace(',', '.').replace(' ', '')
+            valor_formatado = "{:.2f}".format(float(valor_formatado))
+            return valor_formatado
+        except ValueError:
+            logger.warning(
+                f"[ERRO] Valor inválido para '{campo_nome}': '{valor}' na nota {numero_nf} | Prestador: {prestador}"
+            )
+            return ""
+        
+
+
+
+
     @classmethod
     def gerar_xml_abrasf(cls, dados: Dict) -> str:
         print(f"Dados recebidos para geração do XML: {json.dumps(dados, indent=4, ensure_ascii=False)}")
@@ -226,17 +273,20 @@ class XMLGenerator:
 
 
         etree.SubElement(inf_nfse, "CodigoVerificacao").text = codigo_verificacao_clean
-        data_emissao = str(dados.get("dataEmissao", ""))
+        data_emissao = str(dados.get("dataEmissao", "")).replace(" às ", " ")
+        print(f"A data de emissão é: {data_emissao} 1")
 
-        # Converte a data para o formato desejado
         try:
-            data_emissao_obj = datetime.strptime(data_emissao, "%d/%m/%Y")  # Parse da data original
-            data_emissao_formatada = data_emissao_obj.strftime("%Y-%m-%dT00:00:00")  # Formato desejado
-        except ValueError:
+            data_emissao_obj = parse(data_emissao, dayfirst=True)
+            data_emissao_formatada = data_emissao_obj.strftime("%Y-%m-%dT%H:%M:%S")
+            print(f"Data de emissão formatada: {data_emissao_formatada}")
+        except Exception as e:
             data_emissao_formatada = ""
+            print(f"Erro ao converter a data de emissão: {data_emissao} -> {e}")
 
         # Agora você pode usar a data formatada
         etree.SubElement(inf_nfse, "DataEmissao").text = data_emissao_formatada
+        print(f"A data de emissão é: {data_emissao_formatada} 2")
 
         # Valores da NFS-e
         valores_nfse = etree.SubElement(inf_nfse, "ValoresNfse")
@@ -264,10 +314,6 @@ class XMLGenerator:
         valor_iss_formatado = valor_iss.replace('.', '').replace(',', '.')
         etree.SubElement(valores_nfse, "ValorIss").text = valor_iss_formatado
         
-        valor_liquido_nfse = str(dados.get("valorLiquido", ""))
-        # Remove o ponto de milhar e substitui a vírgula por ponto
-        valor_liquido_formatado = valor_liquido_nfse.replace('.', '').replace(',', '.')
-        etree.SubElement(valores_nfse, "ValorLiquidoNfse").text = valor_liquido_formatado
         
 
         # Dados do prestador
@@ -290,8 +336,13 @@ class XMLGenerator:
         etree.SubElement(id_prestador, "InscricaoMunicipal").text = inscricao_municipal_clean
         
         
-        etree.SubElement(prestador_servico, "RazaoSocial").text = dados.get("razaoSocialPrestador")
-        etree.SubElement(prestador_servico, "NomeFantasia").text = dados.get("nomeFantasiaPrestador")
+        razao_social_raw = dados.get("razaoSocialPrestador", "")
+        razao_social_formatada = re.sub(r'\s+', ' ', razao_social_raw).strip()
+        etree.SubElement(prestador_servico, "RazaoSocial").text = razao_social_formatada
+
+        nome_fantasia_raw = dados.get("nomeFantasiaPrestador", "")
+        nome_fantasia_formatada = re.sub(r'\s+', ' ', nome_fantasia_raw).strip()
+        etree.SubElement(prestador_servico, "NomeFantasia").text = nome_fantasia_formatada
 
         # Endereço do prestador
         endereco_prestador = etree.SubElement(prestador_servico, "Endereco")
@@ -318,33 +369,35 @@ class XMLGenerator:
         # Declaração de Prestação de Serviço
         declaracao_prestacao_servico = etree.SubElement(inf_nfse, "DeclaracaoPrestacaoServico")
         inf_declaracao_prestacao_servico = etree.SubElement(declaracao_prestacao_servico, "InfDeclaracaoPrestacaoServico")
-        etree.SubElement(inf_declaracao_prestacao_servico, "Competencia").text = dados.get("competencia", "")
+        competencia = etree.SubElement(inf_declaracao_prestacao_servico, "Competencia").text = dados.get("competencia", "")
+        # verifica se competencia é uma string vazia
+        if not competencia:
+            logger.warning(
+                f"Competência não informada para a nota {dados.get('numero-nota-fiscal', '')} |"
+                f"Prestador: {dados.get('razaoSocialPrestador', '')}"
+            )  
+              
 
         # Serviço
         servico = etree.SubElement(inf_declaracao_prestacao_servico, "Servico")
         valores_servico = etree.SubElement(servico, "Valores")
         
         # ValorServicos
-        valor_servicos = cls.formatar_valor_monetario(dados.get("valorServicos", "0.00"))
-        etree.SubElement(valores_servico, "ValorServicos").text = valor_servicos
+        valor_servicos = cls.validar_dados_criticos(dados, "valorServicos")
+        etree.SubElement(valores_servico, "ValorServicos").text = valor_servicos        
 
         # ValorDeducoes
-        valor_deducoes = str(dados.get("deducoes", "0.00"))
-        valor_deducoes_formatado = valor_deducoes.replace(',', '.').replace(' ', '')  # Remove espaços e converte vírgulas
-        valor_deducoes_formatado = "{:.2f}".format(float(valor_deducoes_formatado))  # Garante 2 casas decimais
-        etree.SubElement(valores_servico, "ValorDeducoes").text = valor_deducoes_formatado
-
+        valor_deducoes = cls.validar_dados_criticos(dados, "deducoes")
+        etree.SubElement(valores_servico, "ValorDeducoes").text = valor_deducoes       
+        
         # ValorIr
-        valor_ir = str(dados.get("impostoRenda", "0.00"))
-        valor_ir_formatado = valor_ir.replace(',', '.').replace(' ', '')  # Remove espaços e converte vírgulas
-        valor_ir_formatado = "{:.2f}".format(float(valor_ir_formatado))  # Garante 2 casas decimais
-        etree.SubElement(valores_servico, "ValorIr").text = valor_ir_formatado
+        valor_ir = cls.validar_dados_criticos(dados, "impostoRenda")        
+        etree.SubElement(valores_servico, "ValorIr").text = valor_ir
 
         # ValorIss
-        valor_iss_servico = str(dados.get("valorIss", "0.00"))
-        valor_iss_servico_formatado = valor_iss_servico.replace(',', '.').replace(' ', '')  # Remove espaços e converte vírgulas
-        valor_iss_servico_formatado = "{:.2f}".format(float(valor_iss_servico_formatado))  # Garante 2 casas decimais
-        etree.SubElement(valores_servico, "ValorIss").text = valor_iss_servico_formatado
+        valor_iss_servico = cls.validar_dados_criticos(dados, "valorIss")        
+        etree.SubElement(valores_servico, "ValorIss").text = valor_iss_servico
+
 
         # Aliquota
         aliquota_servico = str(dados.get("aliquota", "")).strip()
@@ -357,18 +410,75 @@ class XMLGenerator:
         etree.SubElement(valores_servico, "Aliquota").text = str(aliquota_servico_float)    
 
         # IssRetido
-        iss_retido = str(dados.get("iss_retido", "0.00"))
-        iss_retido_formatado = iss_retido.replace(',', '.').replace(' ', '')  # Remove espaços e converte vírgulas
-        iss_retido_formatado = "{:.2f}".format(float(iss_retido_formatado))  # Garante 2 casas decimais
+        iss_retido_val = str(dados.get("iss_retido", "")).strip().lower()   
+        iss_retido_formatado = "1" if iss_retido_val in ["1", "sim", "true"] else "2"
+        logger.info(
+            f"Houve retenção de ISS na nota {dados.get('numero-nota-fiscal', '')}: Valor: {iss_retido_formatado} | "
+            f"Prestador: {dados.get('razaoSocialPrestador', '')}"
+        )        
         etree.SubElement(valores_servico, "IssRetido").text = iss_retido_formatado
 
-        etree.SubElement(servico, "ItemListaServico").text = re.sub(r'[^\w\s]', '', dados.get("item_lista_servico", ""))
-        etree.SubElement(servico, "CodigoCnae").text = re.sub(r'[^\w\s]', '', dados.get("codigo_cnae", ""))
-        etree.SubElement(servico, "Discriminacao").text = dados.get("Discriminacao", "")
-        etree.SubElement(servico, "CodigoMunicipio").text = str(dados.get("municipioPrestacaoServico", ""))
+        item_lista_servico = etree.SubElement(servico, "ItemListaServico").text = re.sub(r'[^\w\s]', '', dados.get("item_lista_servico", ""))
+        # Verifica se o item_lista_servico está vazio
+        if not item_lista_servico:
+            logger.warning(
+                f"Item de lista de serviço não informado para a nota {dados.get('numero-nota-fiscal', '')} | "
+                f"Prestador: {dados.get('razaoSocialPrestador', '')}"
+                )
+        
+        codigo_cnae = etree.SubElement(servico, "CodigoCnae").text = re.sub(r'[^\w\s]', '', dados.get("codigo_cnae", ""))
+        # Verifica se o código CNAE está vazio
+        if not codigo_cnae:
+            logger.warning(
+                f"Código CNAE não informado para a nota {dados.get('numero-nota-fiscal', '')} |"
+                f" Prestador: {dados.get('razaoSocialPrestador', '')}"
+            )
+
+        discriminacao = etree.SubElement(servico, "Discriminacao").text = dados.get("Discriminacao", "")
+        # Verifica se a discriminação está vazia
+        if not discriminacao:
+            logger.warning(
+                f"Discriminação não informada para a nota {dados.get('numero-nota-fiscal', '')} | "
+                f"Prestador: {dados.get('razaoSocialPrestador', '')}")
+
+        codigo_municipio = etree.SubElement(servico, "CodigoMunicipio").text = str(dados.get("municipioPrestacaoServico", ""))
+        if not codigo_municipio:
+            logger.warning(
+                f"Código do município não informado para a nota {dados.get('numero-nota-fiscal', '')} | "
+                f"Prestador: {dados.get('razaoSocialPrestador', '')}"
+            )
+
+        
         etree.SubElement(servico, "CodigoPais").text = str(dados.get("codigoPais", "1058"))
-        etree.SubElement(servico, "ExigibilidadeISS").text = str(dados.get("exigibilidade_iss", ""))
-        etree.SubElement(servico, "MunicipioIncidencia").text = str(dados.get("municipioPrestacaoServico", ""))
+        exigibilidade_iss = etree.SubElement(servico, "ExigibilidadeISS").text = str(dados.get("exigibilidade_iss", ""))
+        # Verifica se a exigibilidade ISS está vazia
+        if not exigibilidade_iss:
+            logger.warning(
+                f"Exigibilidade ISS não informada para a nota {dados.get('numero-nota-fiscal', '')} | "
+                f"Prestador: {dados.get('razaoSocialPrestador', '')}"
+            )
+
+
+        municipio_incidencia = etree.SubElement(servico, "MunicipioIncidencia").text = str(dados.get("municipioPrestacaoServico", ""))
+        # Verifica se o município de incidência está vazio
+        if not municipio_incidencia:
+            logger.warning(
+                f"Município de incidência não informado para a nota {dados.get('numero-nota-fiscal', '')} | "
+                f"Prestador: {dados.get('razaoSocialPrestador', '')}"
+            )
+
+        valor_liquido_nfse = str(dados.get("valorLiquido", "")).replace('.', '').replace(',', '.')
+        # Verifica se o valor é numérico e formata corretamente
+        if not valor_liquido_nfse:
+            try:
+                valor_liquido_calc = float(valor_servicos) - float(valor_iss_servico) \
+                    - float(valor_ir)
+                valor_liquido_nfse = "{:.2f}".format(valor_liquido_calc)
+            except (ValueError, TypeError) as e:
+                valor_liquido_nfse = "0.00"
+                logger.error(f"Erro ao calcular o valor líquido: {e}. Usando valor padrão 0.00.\
+                             Nota número: {dados.get('numero-nota-fiscal', '')}")
+        etree.SubElement(valores_nfse, "ValorLiquidoNfse").text = valor_liquido_nfse
 
         # Gerando o XML em formato string
         xml_str = etree.tostring(root, pretty_print=True, encoding="UTF-8").decode("utf-8")
@@ -588,7 +698,23 @@ class XMLGenerator:
 
 
 
+class ExcelGenerator:
+    """Gera um arquivo Excel com os dados extraídos."""
+    
+    @staticmethod
+    def gerar_excel(dados: List[Dict], nome_arquivo: str = "dados_nfse.xlsx") -> str:
+        """Gera um arquivo Excel a partir de uma lista de dicionários."""
+        if not dados:
+            raise ValueError("Nenhum dado fornecido para gerar o Excel")
 
+        # Criação do DataFrame
+        df = pd.DataFrame(dados)
+
+        # Salvando o DataFrame em um arquivo Excel
+        df.to_excel(nome_arquivo, index=False)
+
+        print(f"Arquivo Excel gerado: {nome_arquivo}")
+        return nome_arquivo
 
 
         
