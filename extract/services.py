@@ -369,14 +369,21 @@ class XMLGenerator:
         # Declaração de Prestação de Serviço
         declaracao_prestacao_servico = etree.SubElement(inf_nfse, "DeclaracaoPrestacaoServico")
         inf_declaracao_prestacao_servico = etree.SubElement(declaracao_prestacao_servico, "InfDeclaracaoPrestacaoServico")
-        competencia = etree.SubElement(inf_declaracao_prestacao_servico, "Competencia").text = dados.get("competencia", "")
-        # verifica se competencia é uma string vazia
-        if not competencia:
+        
+        valor_competencia = dados.get("competencia")
+        print(f"Valor da competência: {valor_competencia}")
+        
+
+        if not valor_competencia:
+            valor_competencia = dados.get("dataEmissao", "")
+        etree.SubElement(inf_declaracao_prestacao_servico, "Competencia").text = valor_competencia
+
+        if not valor_competencia:
             logger.warning(
-                f"Competência não informada para a nota {dados.get('numero-nota-fiscal', '')} |"
-                f"Prestador: {dados.get('razaoSocialPrestador', '')}"
-            )  
-              
+            f"Competência não informada para a nota {dados.get('numero-nota-fiscal', '')} | "
+            f"Prestador: {dados.get('razaoSocialPrestador', '')}"
+        )
+
 
         # Serviço
         servico = etree.SubElement(inf_declaracao_prestacao_servico, "Servico")
