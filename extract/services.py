@@ -370,19 +370,33 @@ class XMLGenerator:
         declaracao_prestacao_servico = etree.SubElement(inf_nfse, "DeclaracaoPrestacaoServico")
         inf_declaracao_prestacao_servico = etree.SubElement(declaracao_prestacao_servico, "InfDeclaracaoPrestacaoServico")
         
-        valor_competencia = dados.get("competencia")
-        print(f"Valor da competência: {valor_competencia}")
-        
+        # Extrai a competência a partir do campo informado ou da data de emissão
+        valor_competencia = dados.get("competencia", "").strip()
+        print(f"Valor da competência (inicial): {valor_competencia}")
 
         if not valor_competencia:
-            valor_competencia = dados.get("dataEmissao", "")
+            data_emissao = dados.get("dataEmissao", "")
+            
+            # Usa regex para extrair padrão DD-MM-YYYY
+            match = re.search(r'(\d{2})[-/](\d{2})[-/](\d{4})', data_emissao)
+            if match:
+                dia, mes, ano = match.groups()
+                try:
+                    data_formatada = datetime.strptime(f"{ano}-{mes}-{dia}", "%Y-%m-%d")
+                    valor_competencia = data_formatada.strftime("%Y-%m-01")  # sempre o 1º dia do mês
+                except ValueError as e:
+                    logger.warning(f"[ERRO] Falha ao converter data de emissão '{data_emissao}' para competência: {e}")
+            else:
+                logger.warning(f"[ERRO] Nenhuma data reconhecida em dataEmissao: '{data_emissao}'")
+
+        # Adiciona a tag ao XML
         etree.SubElement(inf_declaracao_prestacao_servico, "Competencia").text = valor_competencia
 
         if not valor_competencia:
             logger.warning(
-            f"Competência não informada para a nota {dados.get('numero-nota-fiscal', '')} | "
-            f"Prestador: {dados.get('razaoSocialPrestador', '')}"
-        )
+                f"Competência não informada ou inválida para a nota {dados.get('numero-nota-fiscal', '')} | "
+                f"Prestador: {dados.get('razaoSocialPrestador', '')}"
+            )
 
 
         # Serviço
