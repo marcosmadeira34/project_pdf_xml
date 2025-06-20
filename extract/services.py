@@ -173,6 +173,7 @@ class DocumentAIProcessor:
         "servico": "servico",
         "simples_nacional": "simplesNacional",
         "telefone_prestador": "telefonePrestador",
+        "telefone_tomador": "telefoneTomador",
         "tipo_recolhimento": "tipoRecolhimento",
         "uf_prestador": 'ufPrestador',
         'uf_tomador': 'ufTomador',
@@ -562,7 +563,7 @@ class XMLGenerator:
         
         # Código do município do prestador
         codigo_municipio_servico = cls.obter_codigo_municipio(
-            dados.get("municipioPrestacaoServico", ""),
+            dados.get("municipioPrestador", ""),
             dados.get("ufPrestador", "")
         )
 
@@ -578,10 +579,16 @@ class XMLGenerator:
         # Tomador Serviço
         tomador_servico = etree.SubElement(inf_declaracao_prestacao_servico, "Tomador")
         id_tomador = etree.SubElement(tomador_servico, "IdentificacaoTomador")
+        
         id_tomador.text = dados.get("IdentificacaoTomador", "")
         cpf_cnpj_tomador = etree.SubElement(id_tomador, "CpfCnpj")
         cpf_cnpj_tomador.text = dados.get("cpfCnpjTomador", "")
         
+        razao_social_tomador = etree.SubElement(tomador_servico, "RazaoSocial")
+        razao_social_tomador.text = dados.get("razaoSocialTomador", "")
+        
+        
+        # Endereço do tomador
         endereco_tomador = etree.SubElement(tomador_servico, "Endereco")
         logradouro_tomador = etree.SubElement(endereco_tomador, "Endereco")
         logradouro_tomador.text = dados.get("enderecoTomador", "")
@@ -605,7 +612,12 @@ class XMLGenerator:
         cep_tomador = etree.SubElement(endereco_tomador, "Cep")
         cep_tomador.text = dados.get("cepTomador", "")
 
+        contato_tomador = etree.SubElement(tomador_servico, "Contato")
+        telefone_tomador = etree.SubElement(contato_tomador, "Telefone")
+        telefone_tomador.text = dados.get("telefoneTomador", "")
 
+        email_tomador = etree.SubElement(contato_tomador, "Email")
+        email_tomador.text = dados.get("emailTomador", "")
 
 
         valor_liquido_nfse = str(dados.get("valorLiquido", "")).replace('.', '').replace(',', '.')
@@ -615,6 +627,7 @@ class XMLGenerator:
                 valor_liquido_calc = float(valor_servicos) - float(valor_iss_servico) \
                     - float(valor_ir)
                 valor_liquido_nfse = "{:.2f}".format(valor_liquido_calc)
+                print(f"Valor líquido calculado: {valor_liquido_nfse}")
             except (ValueError, TypeError) as e:
                 valor_liquido_nfse = "0.00"
                 logger.error(f"Erro ao calcular o valor líquido: {e}. Usando valor padrão 0.00.\
