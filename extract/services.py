@@ -12,6 +12,9 @@ from datetime import datetime
 import pandas as pd
 from dateutil.parser import parse
 import logging
+from django.conf import settings
+import unicodedata
+
 
 # Configuração do logger
 logging.basicConfig(level=logging.INFO)
@@ -107,6 +110,8 @@ class DocumentAIProcessor:
             print(f"Erro ao processar o documento: {e}")
             return {}
         
+    
+    # metodo para mapeamento dos campos extraídos do PDF
     def mapear_campos(self, document_json):
         """
         Mapeia as entidades extraídas pelo Document AI para um dicionário com os dados desejados.
@@ -146,7 +151,8 @@ class DocumentAIProcessor:
         "inscricao_municipal": "inscricaoMunicipalTomador",
         "inscricao_municipal_prestador": "inscricaoMunicipalPrestador",
         "inss": "valorInss",
-        "iss": "valorIss",       
+        "iss": "valorIss",   
+        "item_lista_servico" : "item_lista_servico",  # ou itemListaServico, dependendo do seu mapeamento
         "local_prestacao": "localPrestacao",
         "municipio_prestacao_servico": "municipioPrestacaoServico",
         "municipio_prestador": "municipioPrestador",
@@ -192,6 +198,16 @@ class DocumentAIProcessor:
                         dados[chave] = entidade["normalizedValue"]["text"]
 
         return dados
+
+class CidadeIBGELoader:
+    _cidades = None
+
+    @classmethod
+    def carregar(cls, caminho_arquivo="cidades_ibge.json"):
+        if cls._cidades is None:
+            with open(caminho_arquivo, encoding="utf-8") as f:
+                cls._cidades = json.load(f)
+        return cls._cidades
 
 
 # define a classe para geração de XML
@@ -254,9 +270,74 @@ class XMLGenerator:
             return ""
         
 
+    @staticmethod
+    def obter_exigibilidade_iss(dados) -> str:
+        """
+        Determina a exigibilidade do ISS com base nas regras fiscais vigentes e nos dados da nota.
+        """
+        valor_bruto = str(dados.get("exigibilidade_iss", "")).strip()
+
+        if valor_bruto in {"1", "2", "3", "4", "5", "6"}:
+            return valor_bruto
+
+        # Se há uma flag de exportação ou tomador do exterior
+        pais_tomador = str(dados.get("paisTomador", "1058")).strip()  # 1058 = Brasil
+        if pais_tomador and pais_tomador != "1058":
+            return "4"  # Exportação
+
+        # Se a natureza da operação indica isenção ou não incidência
+        natureza = str(dados.get("naturezaOperacao", "")).lower()
+
+        if "isencao" in natureza or "isenção" in natureza:
+            return "3"
+        elif "nao incidencia" in natureza or "não incidência" in natureza:
+            return "2"
+        elif "imunidade" in natureza:
+            return "5"
+        elif "decisao judicial" in natureza or "decisão judicial" in natureza:
+            return "6"
+
+        # Valor padrão
+        logger.warning(
+            f"[ExigibilidadeISS] Valor ausente ou não reconhecido para a nota {dados.get('numero-nota-fiscal', '')} | "
+            f"Prestador: {dados.get('razaoSocialPrestador', '')}. Aplicado valor padrão '1' (Exigível)."
+        )
+        return "1"
 
 
+    @staticmethod
+    def obter_codigo_municipio(nome_municipio: str, uf: str) -> str:
+        """
+        Busca o código IBGE com base no nome e UF, usando o dicionário carregado no settings.
+        Funciona mesmo que nome_municipio ou uf venham como lista (acidentalmente).
+        """
+        # Corrige se os campos vierem como listas (por exemplo: ["PARNAMIRIM"])
+        if isinstance(nome_municipio, list):
+            nome_municipio = nome_municipio[0] if nome_municipio else ""
+        if isinstance(uf, list):
+            uf = uf[0] if uf else ""
 
+        if not nome_municipio or not uf:
+            logger.warning("Nome do município ou UF ausente ou inválido.")
+            return ""
+
+        def normalizar(texto):
+            texto = unicodedata.normalize("NFD", texto)
+            texto = texto.encode("ascii", "ignore").decode("utf-8")
+            texto = re.sub(r'[^a-zA-Z0-9\s]', '', texto)
+            return texto.upper().strip()
+
+        chave = f"{normalizar(nome_municipio)}-{uf.upper()}"
+        codigo = settings.CIDADES_IBGE.get(chave)
+
+        if not codigo:
+            logger.warning(f"[CodigoMunicipio] Município '{nome_municipio}-{uf}' não encontrado na base IBGE.")
+            return ""
+
+        return codigo 
+    
+    
+    
     @classmethod
     def gerar_xml_abrasf(cls, dados: Dict) -> str:
         print(f"Dados recebidos para geração do XML: {json.dumps(dados, indent=4, ensure_ascii=False)}")
@@ -349,7 +430,13 @@ class XMLGenerator:
         etree.SubElement(endereco_prestador, "Endereco").text = dados.get("enderecoPrestador")
         etree.SubElement(endereco_prestador, "Numero").text = str(dados.get("numeroPrestador"))
         etree.SubElement(endereco_prestador, "Bairro").text = dados.get("bairroPrestador")
-        etree.SubElement(endereco_prestador, "CodigoMunicipio").text = str(dados.get("municipioPrestacaoServico", ""))
+        
+        codigo_municipio_prestador = cls.obter_codigo_municipio(
+            dados.get("municipioPrestador", ""),
+            dados.get("ufPrestador", "")
+        )        
+        etree.SubElement(endereco_prestador, "CodigoMunicipio").text = codigo_municipio_prestador
+        
         etree.SubElement(endereco_prestador, "CodigoPais").text = str(dados.get("codigoPais", "1058"))
         cep_prestador = dados.get("cepPrestador", "")
         # Remove caracteres não numéricos
@@ -363,7 +450,15 @@ class XMLGenerator:
 
         # Orgão Gerador
         orgao_gerador = etree.SubElement(inf_nfse, "OrgaoGerador")
-        etree.SubElement(orgao_gerador, "CodigoMunicipio").text = str(dados.get("municipioPrestacaoServico", ""))
+        
+        # Código do município do órgão gerador
+        codigo_municipio_orgao = cls.obter_codigo_municipio(
+            dados.get("municipioPrestador", ""),
+            dados.get("ufPrestador", "")
+        )
+        etree.SubElement(orgao_gerador, "CodigoMunicipio").text = codigo_municipio_orgao
+
+
         etree.SubElement(orgao_gerador, "Uf").text = dados.get("ufPrestador")
 
         # Declaração de Prestação de Serviço
@@ -437,15 +532,17 @@ class XMLGenerator:
             f"Houve retenção de ISS na nota {dados.get('numero-nota-fiscal', '')}: Valor: {iss_retido_formatado} | "
             f"Prestador: {dados.get('razaoSocialPrestador', '')}"
         )        
-        etree.SubElement(valores_servico, "IssRetido").text = iss_retido_formatado
+        etree.SubElement(servico, "IssRetido").text = iss_retido_formatado
 
-        item_lista_servico = etree.SubElement(servico, "ItemListaServico").text = re.sub(r'[^\w\s]', '', dados.get("item_lista_servico", ""))
-        # Verifica se o item_lista_servico está vazio
-        if not item_lista_servico:
-            logger.warning(
-                f"Item de lista de serviço não informado para a nota {dados.get('numero-nota-fiscal', '')} | "
-                f"Prestador: {dados.get('razaoSocialPrestador', '')}"
-                )
+        item_lista_servico = str(dados.get("item_lista_servico", "")).strip()
+        print(f"Item Lista Serviço original: {item_lista_servico}")
+        # Extrai apenas o código numérico do início (ex: "16.02" de "16.02-Outros serviços...")
+        match = re.match(r'^(\d{2}\.\d{2})', item_lista_servico)
+        item_lista_servico = match.group(1) if match else item_lista_servico.strip()
+        print(f"Item Lista Serviço formatado: {item_lista_servico}")
+        # Adiciona o item_lista_servico ao XML        
+        etree.SubElement(servico, "ItemListaServico").text = item_lista_servico
+        
         
         codigo_cnae = etree.SubElement(servico, "CodigoCnae").text = re.sub(r'[^\w\s]', '', dados.get("codigo_cnae", ""))
         # Verifica se o código CNAE está vazio
@@ -462,31 +559,54 @@ class XMLGenerator:
                 f"Discriminação não informada para a nota {dados.get('numero-nota-fiscal', '')} | "
                 f"Prestador: {dados.get('razaoSocialPrestador', '')}")
 
-        codigo_municipio = etree.SubElement(servico, "CodigoMunicipio").text = str(dados.get("municipioPrestacaoServico", ""))
-        if not codigo_municipio:
-            logger.warning(
-                f"Código do município não informado para a nota {dados.get('numero-nota-fiscal', '')} | "
-                f"Prestador: {dados.get('razaoSocialPrestador', '')}"
-            )
+        
+        # Código do município do prestador
+        codigo_municipio_servico = cls.obter_codigo_municipio(
+            dados.get("municipioPrestacaoServico", ""),
+            dados.get("ufPrestador", "")
+        )
+
+        etree.SubElement(servico, "CodigoMunicipio").text = codigo_municipio_servico
 
         
         etree.SubElement(servico, "CodigoPais").text = str(dados.get("codigoPais", "1058"))
-        exigibilidade_iss = etree.SubElement(servico, "ExigibilidadeISS").text = str(dados.get("exigibilidade_iss", ""))
-        # Verifica se a exigibilidade ISS está vazia
-        if not exigibilidade_iss:
-            logger.warning(
-                f"Exigibilidade ISS não informada para a nota {dados.get('numero-nota-fiscal', '')} | "
-                f"Prestador: {dados.get('razaoSocialPrestador', '')}"
-            )
+        
+        exigibilidade = cls.obter_exigibilidade_iss(dados)
+        etree.SubElement(servico, "ExigibilidadeISS").text = exigibilidade
 
 
-        municipio_incidencia = etree.SubElement(servico, "MunicipioIncidencia").text = str(dados.get("municipioPrestacaoServico", ""))
-        # Verifica se o município de incidência está vazio
-        if not municipio_incidencia:
-            logger.warning(
-                f"Município de incidência não informado para a nota {dados.get('numero-nota-fiscal', '')} | "
-                f"Prestador: {dados.get('razaoSocialPrestador', '')}"
-            )
+        # Tomador Serviço
+        tomador_servico = etree.SubElement(inf_declaracao_prestacao_servico, "Tomador")
+        id_tomador = etree.SubElement(tomador_servico, "IdentificacaoTomador")
+        id_tomador.text = dados.get("IdentificacaoTomador", "")
+        cpf_cnpj_tomador = etree.SubElement(id_tomador, "CpfCnpj")
+        cpf_cnpj_tomador.text = dados.get("cpfCnpjTomador", "")
+        
+        endereco_tomador = etree.SubElement(tomador_servico, "Endereco")
+        logradouro_tomador = etree.SubElement(endereco_tomador, "Endereco")
+        logradouro_tomador.text = dados.get("enderecoTomador", "")
+        numero_tomador = etree.SubElement(endereco_tomador, "Numero")
+        numero_tomador.text = dados.get("numeroTomador", "")
+        bairro_tomador = etree.SubElement(endereco_tomador, "Bairro")
+        bairro_tomador.text = dados.get("bairroTomador", "")
+        codigo_municipio_tomador = cls.obter_codigo_municipio(
+            dados.get("municipioTomador", ""),
+            dados.get("ufTomador", "")
+        )
+        etree.SubElement(endereco_tomador, "CodigoMunicipio").text = codigo_municipio_tomador
+
+        uf_tomador = etree.SubElement(endereco_tomador, "Uf")
+        uf_tomador.text = dados.get("ufTomador", "")
+
+        codigo_pais_tomador = etree.SubElement(endereco_tomador, "CodigoPais")
+        codigo_pais_tomador.text = str(dados.get("codigoPais", "1058"))
+
+        
+        cep_tomador = etree.SubElement(endereco_tomador, "Cep")
+        cep_tomador.text = dados.get("cepTomador", "")
+
+
+
 
         valor_liquido_nfse = str(dados.get("valorLiquido", "")).replace('.', '').replace(',', '.')
         # Verifica se o valor é numérico e formata corretamente
@@ -738,4 +858,4 @@ class ExcelGenerator:
         return nome_arquivo
 
 
-        
+
