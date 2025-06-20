@@ -402,7 +402,6 @@ class XMLGenerator:
         prestador_servico = etree.SubElement(inf_nfse, "PrestadorServico")
         id_prestador = etree.SubElement(prestador_servico, "IdentificacaoPrestador")
         cpf_cnpj_prestador = etree.SubElement(id_prestador, "CpfCnpj")
-
         cpf_cnpj_prestador_text = dados.get("cpfCnpjPrestador", "")
         # Remove caracteres não numéricos
         cpf_cnpj_prestador_clean = re.sub(r'\D', '', cpf_cnpj_prestador_text)
@@ -446,7 +445,9 @@ class XMLGenerator:
 
         # Contato do prestador
         contato_prestador = etree.SubElement(prestador_servico, "Contato")
-        etree.SubElement(contato_prestador, "Telefone").text = dados.get("telefonePrestador")
+        telefone_prestador = etree.SubElement(contato_prestador, "Telefone")
+        telefone_prestador.text = dados.get("telefonePrestador", "")
+        
         etree.SubElement(contato_prestador, "Email").text = dados.get("emailPrestador")
 
         # Orgão Gerador
@@ -575,15 +576,34 @@ class XMLGenerator:
         exigibilidade = cls.obter_exigibilidade_iss(dados)
         etree.SubElement(servico, "ExigibilidadeISS").text = exigibilidade
 
+       
+        codigo_municipio_incidencia = cls.obter_codigo_municipio(
+            dados.get("municipioPrestador", ""),  # ou outro campo, se for diferente
+            dados.get("ufPrestador", "")
+        )
+
+        etree.SubElement(servico, "MunicipioIncidencia").text = codigo_municipio_incidencia
+
 
         # Tomador Serviço
         tomador_servico = etree.SubElement(inf_declaracao_prestacao_servico, "Tomador")
-        id_tomador = etree.SubElement(tomador_servico, "IdentificacaoTomador")
-        
-        id_tomador.text = dados.get("IdentificacaoTomador", "")
+        id_tomador = etree.SubElement(tomador_servico, "IdentificacaoTomador")        
         cpf_cnpj_tomador = etree.SubElement(id_tomador, "CpfCnpj")
-        cpf_cnpj_tomador.text = dados.get("cpfCnpjTomador", "")
+        cpf_cnpj_tomador_text = dados.get("cpfCnpjTomador", "")
         
+        
+        
+        
+        # remove caracteres não numéricos
+        cpf_cnpj_tomador_clean = re.sub(r'\D', '', cpf_cnpj_tomador_text)
+        # Verifica se é CPF ou CNPJ
+        if len(cpf_cnpj_tomador_clean) == 11:
+            etree.SubElement(cpf_cnpj_tomador, "Cpf").text = cpf_cnpj_tomador_clean
+        else:
+            etree.SubElement(cpf_cnpj_tomador, "Cnpj").text = cpf_cnpj_tomador_clean
+        
+
+
         razao_social_tomador = etree.SubElement(tomador_servico, "RazaoSocial")
         razao_social_tomador.text = dados.get("razaoSocialTomador", "")
         
