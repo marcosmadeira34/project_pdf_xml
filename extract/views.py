@@ -4,7 +4,7 @@ from django.shortcuts import render
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse
 from django.views import View
-from .services import DocumentAIProcessor, XMLGenerator
+from extract.services import DocumentAIProcessor
 from django.contrib.auth import authenticate, login as auth_login
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
