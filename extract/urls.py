@@ -6,6 +6,7 @@ from .views import (
     MergePDFsView,
     TaskStatusView,
     DownloadZipView,
+    StreamlitAppRedirectView,
 )
 
 
@@ -16,4 +17,5 @@ urlpatterns = [
     path('merge_pdfs/', MergePDFsView.as_view(), name='merge_pdfs'),
     path("task-status/<str:task_id>/", TaskStatusView.as_view(), name="task-status"),
     path("download-zip/<str:task_id>/", DownloadZipView.as_view(), name="download-zip"),
+    path("streamlit-dashboard/", StreamlitAppRedirectView.as_view(), name="streamlit-dashboard"),
 ]

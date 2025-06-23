@@ -165,3 +165,22 @@ class DownloadZipView(View):
             return response
 
         return HttpResponse("A tarefa ainda está em processamento ou falhou.", status=400)
+
+
+class StreamlitAppRedirectView(View):
+    """
+    Redireciona o usuário para o URL da aplicação Streamlit.
+    """
+    @method_decorator(login_required) # Opcional: Se quiser que apenas usuários logados acessem essa rota
+    def get(self, request):
+        # Para desenvolvimento local, o Streamlit roda na porta 8501 por padrão.
+        # Para produção no Heroku, usaremos uma variável de ambiente.
+        # Configure esta variável no Heroku CLI:
+        # heroku config:set STREAMLIT_APP_URL="https://your-streamlit-app-on-streamlit-cloud.streamlit.app" -a seu-app-django-heroku
+        streamlit_url = os.getenv("STREAMLIT_APP_URL", "http://localhost:8501")
+
+        if not streamlit_url:
+            # Caso a variável de ambiente não esteja configurada em produção
+            return JsonResponse({"error": "URL do Streamlit não configurada."}, status=500)
+
+        return redirect(streamlit_url)
