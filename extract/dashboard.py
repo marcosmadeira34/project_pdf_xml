@@ -814,7 +814,7 @@ with tab3:
 
                     # Chama a função genérica para interagir com o backend Django para enviar o XML
                     send_response = call_django_backend(
-                        endpoint="/upload-e-processar-pdf/", # ENDPOINT REAL NO SEU DJANGO para envio de XMLs
+                        endpoint="/send-xml-to-external-api/", # ENDPOINT REAL NO SEU DJANGO para envio de XMLs
                         method="POST",
                         json_data={
                             "xml_content": file_data_to_send["XML Content"], # Conteúdo XML real
