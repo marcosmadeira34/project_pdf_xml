@@ -579,7 +579,7 @@ with tab2:
                         
                         # Use a função genérica para chamar o endpoint de upload/processamento
                         response_data = call_django_backend(
-                            endpoint="/api/process-pdfs/", # ENDPOINT REAL NO SEU DJANGO para iniciar a tarefa CELERY
+                            endpoint="https://nfse-abrasf-project-633c01390d1d.herokuapp.com/upload-e-processar-pdf", # ENDPOINT REAL NO SEU DJANGO para iniciar a tarefa CELERY
                             method="POST",
                             files_data=files_data_for_backend
                         )
