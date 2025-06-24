@@ -16,7 +16,7 @@ from django.utils.decorators import method_decorator
 
 # Importa as classes e funções do seu processador e tarefas Celery
 # Certifique-se de que esses imports estão corretos para o seu projeto
-from extract.processor import DocumentAIProcessor
+from extract.services import DocumentAIProcessor
 from extract.tasks import processar_pdfs, merge_pdfs_task
 
 logger = logging.getLogger(__name__)
