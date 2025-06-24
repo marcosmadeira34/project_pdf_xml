@@ -573,17 +573,23 @@ with tab2:
                             original_indices_map[file_path.name] = idx
                         else:
                             st.warning(f"Arquivo não encontrado: {file_path.name}. Pulando.")
+                    # DEBUG: Mostra os arquivos que serão enviados e o mapeamento de índices
+                    st.write("DEBUG - files_data_for_backend.keys():", list(files_data_for_backend.keys()))
+                    st.write("DEBUG - original_indices_map:", original_indices_map)
 
                     if files_data_for_backend:
                         st.info("Enviando PDFs para processamento no backend...")
-                        
+                        # DEBUG: Antes de chamar o backend
+                        st.write("DEBUG - Chamando call_django_backend com arquivos:", list(files_data_for_backend.keys()))
                         # Use a função genérica para chamar o endpoint de upload/processamento
                         response_data = call_django_backend(
                             endpoint="/upload-e-processar-pdf/", # ENDPOINT REAL NO SEU DJANGO para iniciar a tarefa CELERY
                             method="POST",
                             files_data=files_data_for_backend
                         )
-                        print(f"Response Data é: {response_data}") # Debugging para ver o que o backend retornou
+                        # DEBUG: Mostra a resposta do backend
+                        st.write("DEBUG - response_data:", response_data)
+                        print(f"Response Data é: {response_data}")
 
                         if response_data is None:
                             st.error("Falha na comunicação com o backend para iniciar o processamento. Verifique logs.")
