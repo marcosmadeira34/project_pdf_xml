@@ -1,0 +1,93 @@
+<CompNfse xmlns="http://www.abrasf.org.br/nfse.xsd">
+  <Nfse versao="1.00">
+    <InfNfse Id="">
+      <Numero>1062</Numero>
+      <CodigoVerificacao>V4CYS7998</CodigoVerificacao>
+      <DataEmissao>2023-09-07T00:00:00</DataEmissao>
+      <ValoresNfse>
+        <BaseCalculo>4500.00</BaseCalculo>
+        <Aliquota>2.0</Aliquota>
+        <ValorIss>90.00</ValorIss>
+        <ValorLiquidoNfse>4223.25</ValorLiquidoNfse>
+      </ValoresNfse>
+      <PrestadorServico>
+        <IdentificacaoPrestador>
+          <CpfCnpj>
+            <Cnpj>18301036000170</Cnpj>
+          </CpfCnpj>
+          <InscricaoMunicipal>12527</InscricaoMunicipal>
+        </IdentificacaoPrestador>
+        <RazaoSocial>MEDICINA CARVALHO MARTINS LTDA</RazaoSocial>
+        <NomeFantasia>PREFEITURA MUNICIPAL DE LUZ-MG</NomeFantasia>
+        <Endereco>
+          <Endereco>R CIRILO MACIEL Número: 85 Bairro: CENTRO CEP: 35590-044</Endereco>
+          <Numero>85</Numero>
+          <Bairro>CENTRO</Bairro>
+          <CodigoMunicipio>3137205</CodigoMunicipio>
+          <CodigoPais>1058</CodigoPais>
+          <Cep>35590044</Cep>
+        </Endereco>
+        <Contato>
+          <Telefone>(37) 3262-2761</Telefone>
+          <Email/>
+        </Contato>
+      </PrestadorServico>
+      <OrgaoGerador>
+        <CodigoMunicipio>3137205</CodigoMunicipio>
+        <Uf>MG</Uf>
+      </OrgaoGerador>
+      <DeclaracaoPrestacaoServico>
+        <InfDeclaracaoPrestacaoServico>
+          <Competencia></Competencia>
+          <Servico>
+            <Valores>
+              <ValorServicos>90.00</ValorServicos>
+              <ValorDeducoes>0.00</ValorDeducoes>
+              <ValorIr></ValorIr>
+              <ValorIss>90.00</ValorIss>
+              <Aliquota>2.0</Aliquota>
+            </Valores>
+            <IssRetido>2</IssRetido>
+            <ItemListaServico>04.02</ItemListaServico>
+            <CodigoCnae></CodigoCnae>
+            <Discriminacao>REALIZAÇÃO DE EXAMES DE ULTRASSONOGRAFIA NO MES
+DE SETEMBRO/2021 CONFORME AF 5004/2021 SEDO
+REALIZADO OS SEGUINTES SERVIÇOS:
+16 SERVIÇOS DE ULTRASSON DE VIAS URINARIAS NO
+VALOR UNITARIO DE R$90, 00 COM TOTAL DE R$1440, 00;
+10 SERVIÇOS DE ULTRASSON OBSTETRICA NO VALOR
+UNITARIO DE R$90, 00 COM TOTAL DE R$900, 00;
+24 SERVIÇOS DE ULTRASSON ENDOVAGINAL NO VALOR
+UNITARIO DE 90, 00 COM TOTAL DE R$ 2160, 00;
+TOTALIZANDO A NOTA DE R$4500, 00</Discriminacao>
+            <CodigoMunicipio>3137205</CodigoMunicipio>
+            <CodigoPais>1058</CodigoPais>
+            <ExigibilidadeISS>1</ExigibilidadeISS>
+            <MunicipioIncidencia>3137205</MunicipioIncidencia>
+          </Servico>
+          <Tomador>
+            <IdentificacaoTomador>
+              <CpfCnpj>
+                <Cnpj>18301036000170</Cnpj>
+              </CpfCnpj>
+            </IdentificacaoTomador>
+            <RazaoSocial>PREFEITURA MUNICIPAL DE LUZ-MG</RazaoSocial>
+            <Endereco>
+              <Endereco>RUA 16 DE MARÇO Bairro: CENTRO CEP: 35595-000</Endereco>
+              <Numero></Numero>
+              <Bairro>CENTRO</Bairro>
+              <CodigoMunicipio>3138807</CodigoMunicipio>
+              <Uf>MG</Uf>
+              <CodigoPais>1058</CodigoPais>
+              <Cep>35595-000</Cep>
+            </Endereco>
+            <Contato>
+              <Telefone>(37) 3421-3108</Telefone>
+              <Email>saude@luz.mg.gov.br</Email>
+            </Contato>
+          </Tomador>
+        </InfDeclaracaoPrestacaoServico>
+      </DeclaracaoPrestacaoServico>
+    </InfNfse>
+  </Nfse>
+</CompNfse>

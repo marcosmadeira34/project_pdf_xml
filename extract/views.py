@@ -21,6 +21,17 @@ from celery.result import AsyncResult
 from .tasks import processar_pdfs
 import base64
 from datetime import datetime
+import logging
+import requests
+import json
+
+# Configuração do logger
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 
 load_dotenv()
@@ -75,6 +86,11 @@ class UploadEProcessarPDFView(View):
 
         if not files:
             return JsonResponse({"error": "Nenhum arquivo enviado"}, status=400)
+        
+        # 🚫 Validação de extensão dos arquivos
+        for f in files:
+            if not f.name.lower().endswith(".pdf"):
+                return JsonResponse({"error": f"Arquivo '{f.name}' não é um PDF."}, status=400)
 
         # Converter os arquivos para um dicionário {nome: bytes}
         files_data = {pdf.name: pdf.read() for pdf in files}
@@ -184,3 +200,54 @@ class StreamlitAppRedirectView(View):
             return JsonResponse({"error": "URL do Streamlit não configurada."}, status=500)
 
         return redirect(streamlit_url)
+    
+
+
+# --- NOVA VIEW NO DJANGO PARA ENVIAR XML PARA A API EXTERNA ---
+# @method_decorator(csrf_exempt, name='dispatch') # Use isso com CAUTELA e apenas se entender os riscos de segurança!
+class SendXMLToExternalAPIView(View):
+    """
+    Recebe um XML do frontend (Streamlit) e o envia para uma API externa.
+    """
+    @method_decorator(login_required) # Mantenha a proteção de login se for para usuários autenticados
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            xml_content = data.get("xml_content")
+            file_name = data.get("file_name", "unknown_file")
+
+            if not xml_content:
+                return JsonResponse({"status": "error", "error": "Conteúdo XML ausente."}, status=400)
+
+            # --- AQUI VOCÊ FARIA A CHAMADA PARA A SUA API EXTERNA ---
+            # Exemplo de URL de API externa (substitua pela sua real)
+            external_api_url = os.getenv("EXTERNAL_API_SEND_URL", "https://api.example.com/send_nfse")
+
+            headers = {
+                "Content-Type": "application/xml", # Ou 'application/json' se a API externa espera JSON
+                # "Authorization": f"Bearer {os.getenv('EXTERNAL_API_TOKEN')}" # Se sua API externa exigir autenticação
+            }
+
+            logger.info(f"Enviando XML de {file_name} para API externa.")
+            api_response = requests.post(external_api_url, data=xml_content.encode('utf-8'), headers=headers, timeout=30)
+            api_response.raise_for_status() # Lança exceção para erros HTTP
+
+            # Assumindo que a API externa retorna um JSON com um UUID ou status
+            external_api_data = api_response.json()
+            uuid_retornado = external_api_data.get("uuid", "N/A")
+
+            logger.info(f"XML de {file_name} enviado com sucesso. UUID: {uuid_retornado}")
+            return JsonResponse({"status": "success", "uuid": uuid_retornado, "message": "XML enviado com sucesso!"})
+
+        except json.JSONDecodeError:
+            return JsonResponse({"status": "error", "error": "Requisição JSON inválida."}, status=400)
+        except requests.exceptions.RequestException as e:
+            error_message = f"Erro ao comunicar com API externa: {str(e)}"
+            if e.response is not None:
+                error_message += f" - Detalhes: {e.response.text}"
+            logger.error(error_message, exc_info=True)
+            return JsonResponse({"status": "error", "error": error_message}, status=500)
+        except Exception as e:
+            logger.error(f"Erro inesperado no envio de XML: {e}", exc_info=True)
+            return JsonResponse({"status": "error", "error": f"Erro interno do servidor: {str(e)}"}, status=500)
+

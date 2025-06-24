@@ -415,17 +415,26 @@
               "X-CSRFToken": getCSRFToken(),
             },
           })
-            .then((response) => response.json())
-            .then((data) => {
-              if (!data.task_ids)
-                throw new Error("Erro ao iniciar o processamento");
+            .then(async (response) => {
+              const data = await response.json();
+
+              if (!response.ok) {
+                // Mostra erro detalhado retornado pelo Django (ex: "Arquivo 'xyz' não é um PDF.")
+                throw new Error(data.error || "Erro desconhecido.");
+              }
+
+              if (!data.task_ids) {
+                throw new Error("Erro ao iniciar o processamento.");
+              }
+
               acompanharProgresso(data.task_ids[0]);
             })
             .catch((error) => {
               console.error("Erro na requisição:", error);
               document.getElementById("loadingOverlay").style.display = "none";
-              message.innerText =
-                "Erro ao converter os arquivos: " + error.message;
+
+              // Aqui mostramos um pop-up usando alert ou outro componente
+              alert("Erro: " + error.message); // Pode trocar por modal mais elegante
             });
         });
 
