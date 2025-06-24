@@ -25,6 +25,7 @@ import logging
 import requests
 import json
 from django.views.decorators.csrf import csrf_exempt
+from django.http import HttpResponseRedirect
 
 # Configuração do logger
 logger = logging.getLogger(__name__)
@@ -54,7 +55,7 @@ class LoginView(View):
         if user is not None:
             # Se o login for bem-sucedido, realiza o login e redireciona para a página de upload
             auth_login(request, user)
-            return redirect("upload-e-processar-pdf")  # Redireciona para a página de upload de PDF
+            return redirect("streamlit-dashboard")  # Redireciona para a página de upload de PDF
         else:
             # Se falhar, retorna um erro
             messages.error(request, "Usuário ou senha inválidos.")
@@ -189,7 +190,7 @@ class StreamlitAppRedirectView(View):
     """
     Redireciona o usuário para o URL da aplicação Streamlit.
     """
-    @method_decorator(login_required) # Opcional: Se quiser que apenas usuários logados acessem essa rota
+    #@method_decorator(login_required) # Opcional: Se quiser que apenas usuários logados acessem essa rota
     def get(self, request):
         # Para desenvolvimento local, o Streamlit roda na porta 8501 por padrão.
         # Para produção no Heroku, usaremos uma variável de ambiente.
@@ -201,11 +202,11 @@ class StreamlitAppRedirectView(View):
             # Caso a variável de ambiente não esteja configurada em produção
             return JsonResponse({"error": "URL do Streamlit não configurada."}, status=500)
 
-        return redirect(streamlit_url)
+        return HttpResponseRedirect(streamlit_url)
     
 
 # --- NOVA VIEW NO DJANGO PARA ENVIAR XML PARA A API EXTERNA ---
-# @method_decorator(csrf_exempt, name='dispatch') # Use isso com CAUTELA e apenas se entender os riscos de segurança!
+@method_decorator(csrf_exempt, name='dispatch') # Use isso com CAUTELA e apenas se entender os riscos de segurança!
 class SendXMLToExternalAPIView(View):
     """
     Recebe um XML do frontend (Streamlit) e o envia para uma API externa.
