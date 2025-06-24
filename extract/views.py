@@ -65,7 +65,7 @@ class LoginView(View):
 class LogoutView(View):
     """View para realizar o logout do usuário."""
     
-    @method_decorator(login_required)
+    #@method_decorator(login_required)
     def get(self, request):
         """Realiza o logout e redireciona para a página de login."""
         from django.contrib.auth import logout
@@ -77,12 +77,12 @@ class LogoutView(View):
 class UploadEProcessarPDFView(View):
     """View para upload e processamento assíncrono de PDFs."""
 
-    @method_decorator(login_required)
+    #@method_decorator(login_required)
     def get(self, request):
         """Renderiza o formulário de upload."""
         return render(request, "test_processar.html")
 
-    @method_decorator(login_required)
+    #@method_decorator(login_required)
     def post(self, request):
         """Inicia o processamento dos PDFs via Celery e retorna o task_id."""
         files = request.FILES.getlist("files")
@@ -211,7 +211,7 @@ class SendXMLToExternalAPIView(View):
     """
     Recebe um XML do frontend (Streamlit) e o envia para uma API externa.
     """
-    @method_decorator(login_required) # Mantenha a proteção de login se for para usuários autenticados
+    #@method_decorator(login_required) # Mantenha a proteção de login se for para usuários autenticados
     def post(self, request):
         try:
             data = json.loads(request.body)
