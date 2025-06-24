@@ -10,6 +10,7 @@ from django.core.files.storage import default_storage
 import base64
 import logging
 import PyPDF2
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +64,7 @@ def processar_pdfs(self, files_data):
                     # Adiciona o XML ao dicionário de XMLs extraídos
                     extracted_xmls[xml_file_name] = xml_content
                     # Adiciona o XML ao arquivo ZIP
-                    zipf.writestr(xml_file_name, xml_content)
+                    zipf.writestr(xml_file_name, json.dumps(xml_content, ensure_ascii=False, indent=2))
                     logger.info(f"XML gerado e adicionado ao ZIP para {file_name}.")
                 else:
                     logger.warning(f"Nenhum XML gerado para {file_name}.")
