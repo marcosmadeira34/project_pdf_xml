@@ -55,7 +55,7 @@ class LoginView(View):
         if user is not None:
             # Se o login for bem-sucedido, realiza o login e redireciona para a página de upload
             auth_login(request, user)
-            return redirect("upload-e-processar-pdf")  # Redireciona para a página de upload de PDF
+            return redirect("streamlit-dashboard")  # Redireciona para a página de upload de PDF
         else:
             # Se falhar, retorna um erro
             messages.error(request, "Usuário ou senha inválidos.")
