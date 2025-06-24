@@ -601,7 +601,7 @@ with tab2:
                                     for task_id in st.session_state['active_task_ids']:
                                         # Consulta o status da tarefa Celery
                                         status_response = call_django_backend(
-                                            endpoint=f"/api/task-status/{task_id}/", # ENDPOINT REAL NO SEU DJANGO para status da tarefa
+                                            endpoint=f"/task-status/{task_id}/", # ENDPOINT REAL NO SEU DJANGO para status da tarefa
                                             method="GET"
                                         )
                                         
@@ -663,7 +663,7 @@ with tab2:
                                     # Tenta baixar o ZIP para cada tarefa concluída com sucesso
                                     for task_id in st.session_state['active_task_ids']:
                                         task_status_final = call_django_backend(
-                                            endpoint=f"/api/task-status/{task_id}/",
+                                            endpoint=f"/task-status/{task_id}/",
                                             method="GET"
                                         )
                                         if task_status_final and task_status_final.get("state") == "SUCCESS":
