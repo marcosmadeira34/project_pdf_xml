@@ -24,6 +24,7 @@ from datetime import datetime
 import logging
 import requests
 import json
+from django.views.decorators.csrf import csrf_exempt
 
 # Configuração do logger
 logger = logging.getLogger(__name__)
@@ -71,6 +72,7 @@ class LogoutView(View):
         return redirect("login")
     
 
+@method_decorator(csrf_exempt, name='dispatch')
 class UploadEProcessarPDFView(View):
     """View para upload e processamento assíncrono de PDFs."""
 
@@ -201,7 +203,6 @@ class StreamlitAppRedirectView(View):
 
         return redirect(streamlit_url)
     
-
 
 # --- NOVA VIEW NO DJANGO PARA ENVIAR XML PARA A API EXTERNA ---
 # @method_decorator(csrf_exempt, name='dispatch') # Use isso com CAUTELA e apenas se entender os riscos de segurança!
