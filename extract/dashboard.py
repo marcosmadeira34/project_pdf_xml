@@ -11,6 +11,8 @@ import logging
 import os 
 import base64
 import requests
+import io
+import zipfile
 
 # --- Suas importações existentes ---
 #from services import XMLGenerator
@@ -98,6 +100,108 @@ def call_django_backend_to_process_pdfs(files_data: dict) -> tuple[list, list]:
         return [], f"Erro HTTP do backend: {e.response.status_code} - {error_detail}"
     except Exception as e:
         return [], f"Erro inesperado ao chamar o backend: {str(e)}"
+
+# Sua função call_django_backend (sempre use-a para comunicação com o Django)
+def call_django_backend(endpoint, method="POST", files_data=None, json_data=None):
+    # ... (seu código existente da função) ...
+    # Certifique-se que ela lida com 'application/json' para json_data
+    # e 'multipart/form-data' para files_data (requests faz isso automaticamente)
+    # E que ela retorna response.json() ou None em caso de erro.
+    pass # Código omitido por brevidade, assumindo que está correto
+
+
+# NOVA FUNÇÃO: Para enviar um único XML para a API externa via seu Django Backend
+def send_xml_to_external_api(xml_content: str, file_name: str) -> dict:
+    st.info(f"Enviando '{file_name}' para a API externa...")
+    data_to_send = {
+        "xml_content": xml_content,
+        "file_name": file_name
+    }
+    # Chama o endpoint do Django que, por sua vez, chama a API externa
+    response = call_django_backend("/send-xml-to-external-api/", method="POST", json_data=data_to_send)
+    return response # Retorna a resposta da API externa via Django
+
+
+# Função principal que o frontend chama para processar e enviar
+def process_pdfs_and_send_to_api(files_data_for_backend):
+    # 1. Enviar PDFs para processamento e obter task_ids
+    st.info("Enviando PDFs para processamento no backend...")
+    files_to_send = {name: (name, content) for name, content in files_data_for_backend.items()}
+    response_data = call_django_backend("/upload-e-processar-pdf/", method="POST", files_data=files_to_send)
+
+    if not response_data or "task_ids" not in response_data:
+        st.error("Erro ao iniciar o processamento no backend.")
+        return False, "Erro: Resposta inesperada do backend após o upload."
+
+    task_ids = response_data["task_ids"]
+    st.info(f"Processamento iniciado para {len(task_ids)} tarefa(s).")
+
+    all_xml_files = {} # Para armazenar os XMLs de todas as tarefas
+
+    for task_id in task_ids:
+        st.write(f"Monitorando tarefa: {task_id}...")
+        status = "PENDING"
+        task_result = None # Para armazenar o resultado da tarefa quando ela concluir
+
+        # 2. Polling para verificar o status da tarefa
+        with st.spinner(f"Aguardando conclusão da tarefa {task_id}..."):
+            while status in ["PENDING", "STARTED", "RETRY"]:
+                time.sleep(5) # Espera 5 segundos
+                status_response = call_django_backend(f"/task-status/{task_id}/", method="GET")
+
+                if status_response and "status" in status_response:
+                    status = status_response["status"]
+                    st.write(f"Status da tarefa {task_id}: {status}")
+                    if status == "SUCCESS":
+                        task_result = status_response.get("result")
+                        if task_result and "zip_bytes" in task_result:
+                            st.success(f"Tarefa {task_id} concluída com sucesso! Extraindo XMLs...")
+                            zip_base64_string = task_result["zip_bytes"]
+                            zip_decoded_bytes = base64.b64decode(zip_base64_string)
+
+                            # Abrir o ZIP em memória e extrair os XMLs
+                            with io.BytesIO(zip_decoded_bytes) as zip_buffer:
+                                with zipfile.ZipFile(zip_buffer, 'r') as zf:
+                                    for xml_file_name in zf.namelist():
+                                        if xml_file_name.endswith('.xml'):
+                                            with zf.open(xml_file_name) as xml_file:
+                                                xml_content = xml_file.read().decode('utf-8')
+                                                all_xml_files[xml_file_name] = xml_content
+                            break # Sai do loop de polling, tarefa concluída e dados extraídos
+                        else:
+                            st.error(f"Tarefa {task_id} concluída, mas não retornou os dados ZIP esperados.")
+                            return False, f"Tarefa {task_id} concluída sem dados."
+                    elif status == "FAILURE":
+                        st.error(f"A tarefa {task_id} falhou: {status_response.get('error_message', 'Erro desconhecido')}")
+                        return False, f"Tarefa {task_id} falhou."
+                else:
+                    st.warning(f"Não foi possível obter o status para a tarefa {task_id}. Tentando novamente...")
+                    time.sleep(10)
+
+    # 3. Se todas as tarefas foram concluídas e os XMLs extraídos, enviar para a API externa
+    if not all_xml_files:
+        st.warning("Nenhum arquivo XML foi extraído para envio.")
+        return False, "Nenhum XML para enviar."
+
+    st.subheader("Enviando XMLs para API Externa:")
+    success_count = 0
+    fail_count = 0
+    for file_name, xml_content in all_xml_files.items():
+        send_result = send_xml_to_external_api(xml_content, file_name)
+        if send_result and send_result.get("status") == "success":
+            st.success(f"'{file_name}' enviado com sucesso! UUID: {send_result.get('uuid')}")
+            success_count += 1
+        else:
+            st.error(f"Falha ao enviar '{file_name}'. Detalhes: {send_result.get('error', 'Erro desconhecido')}")
+            fail_count += 1
+
+    if fail_count == 0:
+        st.success(f"Todos os {success_count} XML(s) foram enviados com sucesso para a API externa!")
+        return True, None
+    else:
+        return False, f"{success_count} XML(s) enviados com sucesso, {fail_count} falharam."
+
+
 
 # --- FUNÇÃO PARA PEGAR O STATUS E RESULTADO DA TAREFA CELERY ---
 def get_celery_task_status(task_id: str):

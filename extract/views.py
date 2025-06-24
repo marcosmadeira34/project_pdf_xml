@@ -55,7 +55,7 @@ class LoginView(View):
         if user is not None:
             # Se o login for bem-sucedido, realiza o login e redireciona para a página de upload
             auth_login(request, user)
-            return redirect("streamlit-dashboard")  # Redireciona para a página de upload de PDF
+            return redirect("upload-e-processar-pdf")  # Redireciona para a página de upload de PDF
         else:
             # Se falhar, retorna um erro
             messages.error(request, "Usuário ou senha inválidos.")
@@ -139,32 +139,54 @@ class MergePDFsView(View):
             return response
 
 
-class TaskStatusView(View):
-    """Retorna o status do processamento da task Celery e permite o download do ZIP."""
+# class TaskStatusView(View):
+#     """Retorna o status do processamento da task Celery e permite o download do ZIP."""
 
-    def get(self, request, task_id):
-        result = AsyncResult(task_id)
+#     def get(self, request, task_id):
+#         result = AsyncResult(task_id)
 
-        if result.state == "PROGRESS":
-            return JsonResponse({
-                "status": "processing",
-                "processed": result.info.get("processed", 0),
-                "total": result.info.get("total", 1),
-            })
+#         if result.state == "PROGRESS":
+#             return JsonResponse({
+#                 "status": "processing",
+#                 "processed": result.info.get("processed", 0),
+#                 "total": result.info.get("total", 1),
+#             })
 
-        if result.state == "SUCCESS" and result.result:
-            zip_bytes_base64 = result.result.get("zip_bytes", "")
-            if not zip_bytes_base64:
-                return JsonResponse({"status": "error", "message": "ZIP não encontrado."})
+#         if result.state == "SUCCESS" and result.result:
+#             zip_bytes_base64 = result.result.get("zip_bytes", "")
+#             if not zip_bytes_base64:
+#                 return JsonResponse({"status": "error", "message": "ZIP não encontrado."})
 
-            return JsonResponse({
-                "status": "completed",
-                "zip_data": zip_bytes_base64,  # Envia os bytes do ZIP em Base64
-                "xml_files": result.result.get("xml_files", [])
-            })
+#             return JsonResponse({
+#                 "status": "completed",
+#                 "zip_data": zip_bytes_base64,  # Envia os bytes do ZIP em Base64
+#                 "xml_files": result.result.get("xml_files", [])
+#             })
 
-        return JsonResponse({"status": result.state, "message": "Processamento em andamento ou erro."})
+#         return JsonResponse({"status": result.state, "message": "Processamento em andamento ou erro."})
     
+
+@method_decorator(csrf_exempt, name='dispatch')
+class TaskStatusView(View):
+    """Retorna o status da task Celery em formato JSON."""
+    def get(self, request, task_id):
+        task = AsyncResult(task_id)
+        response_data = {
+            "status": task.status,
+            "ready": task.ready(),
+            "successful": task.successful(),
+            "failed": task.failed(),
+        }
+
+        if task.successful():
+            # Se a tarefa foi bem-sucedida, inclua os dados gerados.
+            # O resultado da sua tarefa processar_pdfs já é {'zip_bytes': '...'}
+            # Então, vamos incluir isso na resposta.
+            response_data["result"] = task.result # Isso vai incluir o {'zip_bytes': '...'}
+        elif task.failed():
+            response_data["error_message"] = str(task.info)
+
+        return JsonResponse(response_data)
 
 class DownloadZipView(View):
     """Recebe o ZIP Base64 da task e retorna como um arquivo para o usuário."""
