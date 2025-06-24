@@ -583,6 +583,7 @@ with tab2:
                             method="POST",
                             files_data=files_data_for_backend
                         )
+                        print(f"Response Data é: {response_data}") # Debugging para ver o que o backend retornou
 
                         if response_data is None:
                             st.error("Falha na comunicação com o backend para iniciar o processamento. Verifique logs.")
