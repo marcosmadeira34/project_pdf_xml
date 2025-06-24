@@ -30,25 +30,6 @@ PROCESSOR_ID = os.getenv("PROCESSOR_ID")
 
 DJANGO_BACKEND_URL = os.getenv("DJANGO_BACKEND_URL", "http://127.0.0.1:8001")
 
-# --- Instância da sua classe XMLGenerator (criada uma vez) ---
-# try:
-#     xml_generator_instance = XMLGenerator()
-#     st.session_state['xml_generator_ready'] = True
-# except Exception as e:
-#     st.error(f"Erro ao inicializar XMLGenerator: {e}. Verifique se as dependências estão corretas.")
-#     st.session_state['xml_generator_ready'] = False
-#     xml_generator_instance = None # Define como None se a inicialização falhar
-
-# # --- Instância da sua classe DocumentAIProcessor (criada uma vez) ---
-# try:
-#     processor_instance = DocumentAIProcessor()
-#     st.session_state['doc_ai_processor_ready'] = True
-# except Exception as e:
-#     st.error(f"Erro ao inicializar DocumentAIProcessor: {e}. Verifique se as dependências estão corretas.")
-#     st.session_state['doc_ai_processor_ready'] = False
-#     processor_instance = None # Define como None se a inicialização falhar
-
-
 # --- Configuração da Página ---
 st.set_page_config(
     page_title="NFS-e Control - Sistema de Gerenciamento",
@@ -90,9 +71,9 @@ def call_django_backend(endpoint: str, method: str = "POST", files_data: dict = 
         if method.upper() == "POST":
             if files_data:
                 # Transforma o dicionário files_data no formato que requests.post espera para 'files'
-                files_payload = {
-                    "files": [(name, content, "application/pdf") for name, content in files_data.items()]
-                }
+                files_payload = [
+                    ("files", (name, content, "application/pdf")) for name, content in files_data.items()
+                ]
                 response = requests.post(url, files=files_payload, headers=headers, timeout=120)
             elif json_data:
                 headers["Content-Type"] = "application/json"
