@@ -57,7 +57,7 @@ def processar_pdfs(self, files_data):
                 # O seu método `processar_pdf` na classe `DocumentAIProcessor`
                 # DEVE ter a assinatura:
                 # `def processar_pdf(self, project_id, location, processor_id, pdf_bytes, file_name):`
-                xml_content = processor.processar_pdf(project_id, location, processor_id, file_content, file_name)
+                xml_content = processor.processar_pdf(project_id, location, processor_id, file_content)
 
                 if xml_content:
                     # Adiciona o XML ao dicionário de XMLs extraídos

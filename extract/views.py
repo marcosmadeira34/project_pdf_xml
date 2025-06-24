@@ -87,7 +87,8 @@ class UploadEProcessarPDFView(View):
             for lote in lotes:
                 task = processar_pdfs.delay(lote) # Inicia a tarefa Celery
                 task_ids.append(task.id)
-
+                print(f"O retorno da tarefa é: {task.id}")
+            
             return JsonResponse({"task_ids": task_ids, "message": "Processamento iniciado!"})
         except Exception as e:
             logger.error(f"Erro ao iniciar o processamento de PDF: {e}", exc_info=True)
