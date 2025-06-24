@@ -579,7 +579,7 @@ with tab2:
                         
                         # Use a função genérica para chamar o endpoint de upload/processamento
                         response_data = call_django_backend(
-                            endpoint="https://nfse-abrasf-project-633c01390d1d.herokuapp.com/upload-e-processar-pdf", # ENDPOINT REAL NO SEU DJANGO para iniciar a tarefa CELERY
+                            endpoint="/upload-e-processar-pdf", # ENDPOINT REAL NO SEU DJANGO para iniciar a tarefa CELERY
                             method="POST",
                             files_data=files_data_for_backend
                         )
@@ -814,7 +814,7 @@ with tab3:
 
                     # Chama a função genérica para interagir com o backend Django para enviar o XML
                     send_response = call_django_backend(
-                        endpoint="/api/send-xml/", # ENDPOINT REAL NO SEU DJANGO para envio de XMLs
+                        endpoint="/upload-e-processar-pdf/", # ENDPOINT REAL NO SEU DJANGO para envio de XMLs
                         method="POST",
                         json_data={
                             "xml_content": file_data_to_send["XML Content"], # Conteúdo XML real
