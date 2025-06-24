@@ -1,239 +1,183 @@
-from django.shortcuts import render
+# extract/views.py
 
-# Create your views here.
-from django.shortcuts import render, redirect
-from django.http import JsonResponse, HttpResponse
-from django.views import View
-from extract.services import DocumentAIProcessor
-from django.contrib.auth import authenticate, login as auth_login
-from django.contrib.auth.decorators import login_required
-from django.utils.decorators import method_decorator
-from django.contrib import messages
-from dotenv import load_dotenv
-import os
-import zipfile
-import io
-from PyPDF2 import PdfMerger
-from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
-from django.core.files.storage import default_storage
-from celery.result import AsyncResult
-from .tasks import processar_pdfs
-import base64
-from datetime import datetime
-import logging
-import requests
 import json
+import logging
+import os
+import requests
+import base64 # Importe base64 para lidar com o ZIP
+from celery.result import AsyncResult
+from django.contrib import messages
+from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
+from django.http import HttpResponseRedirect, JsonResponse
+from django.shortcuts import render, redirect
+from django.views import View
 from django.views.decorators.csrf import csrf_exempt
-from django.http import HttpResponseRedirect
+from django.utils.decorators import method_decorator
 
-# Configuração do logger
+# Importa as classes e funções do seu processador e tarefas Celery
+# Certifique-se de que esses imports estão corretos para o seu projeto
+from extract.processor import DocumentAIProcessor
+from extract.tasks import processar_pdfs, merge_pdfs_task
+
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-handler = logging.StreamHandler()
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
 
-
-load_dotenv()
-print("Variáveis de ambiente carregadas.")
-
+# --- View de Login ---
 class LoginView(View):
     """View para exibir o formulário de login."""
 
     def get(self, request):
         return render(request, "login_page.html")
-    
 
     def post(self, request):
         username = request.POST.get("username")
         password = request.POST.get("password")
 
-        # Autentica o usuário
         user = authenticate(request, username=username, password=password)
         if user is not None:
-            # Se o login for bem-sucedido, realiza o login e redireciona para a página de upload
             auth_login(request, user)
-            return redirect("streamlit-dashboard")  # Redireciona para a página de upload de PDF
+            # Redireciona para a URL que leva ao Streamlit
+            return redirect("streamlit-dashboard")
         else:
-            # Se falhar, retorna um erro
             messages.error(request, "Usuário ou senha inválidos.")
             return render(request, "login_page.html")
 
-
+# --- View de Logout ---
 class LogoutView(View):
     """View para realizar o logout do usuário."""
-    
-    #@method_decorator(login_required)
-    def get(self, request):
-        """Realiza o logout e redireciona para a página de login."""
-        from django.contrib.auth import logout
-        logout(request)
-        return redirect("login")
-    
 
+    def get(self, request):
+        auth_logout(request)
+        messages.info(request, "Você foi desconectado com sucesso.")
+        return redirect("login")
+
+# --- View para Redirecionar para o Streamlit ---
+class StreamlitAppRedirectView(View):
+    """Redireciona o usuário para o URL da aplicação Streamlit."""
+
+    def get(self, request):
+        streamlit_app_url = os.getenv("STREAMLIT_APP_URL", "http://127.0.0.1:8501")
+        if not streamlit_app_url:
+            # Em um ambiente de produção, logue isso, mas evite expor detalhes sensíveis
+            logger.error("STREAMLIT_APP_URL não configurada nas variáveis de ambiente.")
+            return JsonResponse({"error": "Configuração de URL do Streamlit ausente."}, status=500)
+        return HttpResponseRedirect(streamlit_app_url)
+
+# --- View para Upload e Processamento de PDF (API) ---
 @method_decorator(csrf_exempt, name='dispatch')
 class UploadEProcessarPDFView(View):
-    """View para upload e processamento assíncrono de PDFs."""
+    """Recebe PDFs do frontend, inicia o processamento assíncrono via Celery."""
 
-    #@method_decorator(login_required)
-    def get(self, request):
-        """Renderiza o formulário de upload."""
-        return render(request, "test_processar.html")
-
-    #@method_decorator(login_required)
     def post(self, request):
-        """Inicia o processamento dos PDFs via Celery e retorna o task_id."""
         files = request.FILES.getlist("files")
 
         if not files:
             return JsonResponse({"error": "Nenhum arquivo enviado"}, status=400)
-        
-        # 🚫 Validação de extensão dos arquivos
-        for f in files:
-            if not f.name.lower().endswith(".pdf"):
-                return JsonResponse({"error": f"Arquivo '{f.name}' não é um PDF."}, status=400)
 
-        # Converter os arquivos para um dicionário {nome: bytes}
         files_data = {pdf.name: pdf.read() for pdf in files}
 
-        # Instanciar o processador
-        processor = DocumentAIProcessor()
+        try:
+            processor = DocumentAIProcessor()
+            max_lotes = 10
+            lotes = processor.dividir_em_lotes(files_data, tamanho_lote=20)
 
-        # Definir limite de segurança para evitar sobrecarga
-        max_lotes = 10  # Ajuste conforme necessário
+            if len(lotes) > max_lotes:
+                return JsonResponse({"error": "Excesso de arquivos enviados. Tente novamente com menos arquivos."}, status=400)
 
-        lotes = processor.dividir_em_lotes(files_data, tamanho_lote=20)
+            task_ids = []
+            for lote in lotes:
+                task = processar_pdfs.delay(lote) # Inicia a tarefa Celery
+                task_ids.append(task.id)
 
-        if len(lotes) > max_lotes:
-            return JsonResponse({"error": "Excesso de arquivos enviados. Tente novamente com menos arquivos."}, status=400)
+            return JsonResponse({"task_ids": task_ids, "message": "Processamento iniciado!"})
+        except Exception as e:
+            logger.error(f"Erro ao iniciar o processamento de PDF: {e}", exc_info=True)
+            return JsonResponse({"error": f"Erro interno ao iniciar o processamento: {str(e)}"}, status=500)
 
-        task_ids = []
-
-        for lote in lotes:
-            task = processar_pdfs.delay(lote)
-            task_ids.append(task.id)
-
-        return JsonResponse({"task_ids": task_ids, "message": "Processamento iniciado!"})
-        
-
-class MergePDFsView(View):
-    """View para mesclar múltiplos PDFs em um único arquivo."""
-    @method_decorator(csrf_exempt)
-    def post(self, request):
-        if request.method == "POST" and request.FILES.getlist("files"):
-            pdf_merge = PdfMerger()
-
-            for file in request.FILES.getlist("files"):
-                pdf_merge.append(file)
-            
-            merge_pdf = io.BytesIO()
-            pdf_merge.write(merge_pdf)
-            pdf_merge.close()
-            merge_pdf.seek(0)
-
-            response = HttpResponse(merge_pdf.read(), 
-                                    content_type="application/pdf")
-            response["Content-Disposition"] = 'inline; filename="merged_pdf.pdf"'
-            return response
-
-
-# class TaskStatusView(View):
-#     """Retorna o status do processamento da task Celery e permite o download do ZIP."""
-
-#     def get(self, request, task_id):
-#         result = AsyncResult(task_id)
-
-#         if result.state == "PROGRESS":
-#             return JsonResponse({
-#                 "status": "processing",
-#                 "processed": result.info.get("processed", 0),
-#                 "total": result.info.get("total", 1),
-#             })
-
-#         if result.state == "SUCCESS" and result.result:
-#             zip_bytes_base64 = result.result.get("zip_bytes", "")
-#             if not zip_bytes_base64:
-#                 return JsonResponse({"status": "error", "message": "ZIP não encontrado."})
-
-#             return JsonResponse({
-#                 "status": "completed",
-#                 "zip_data": zip_bytes_base64,  # Envia os bytes do ZIP em Base64
-#                 "xml_files": result.result.get("xml_files", [])
-#             })
-
-#         return JsonResponse({"status": result.state, "message": "Processamento em andamento ou erro."})
-    
-
+# --- View para Verificar o Status da Tarefa Celery (API) ---
 @method_decorator(csrf_exempt, name='dispatch')
 class TaskStatusView(View):
-    """Retorna o status da task Celery em formato JSON."""
+    """Verifica o status de uma tarefa Celery e retorna o resultado se concluída."""
+
     def get(self, request, task_id):
-        task = AsyncResult(task_id)
-        response_data = {
-            "status": task.status,
-            "ready": task.ready(),
-            "successful": task.successful(),
-            "failed": task.failed(),
-        }
+        try:
+            task = AsyncResult(task_id)
+            response_data = {
+                "status": task.status,
+                "ready": task.ready(),
+                "successful": task.successful(),
+                "failed": task.failed(),
+            }
 
-        if task.successful():
-            # Se a tarefa foi bem-sucedida, inclua os dados gerados.
-            # O resultado da sua tarefa processar_pdfs já é {'zip_bytes': '...'}
-            # Então, vamos incluir isso na resposta.
-            response_data["result"] = task.result # Isso vai incluir o {'zip_bytes': '...'}
-        elif task.failed():
-            response_data["error_message"] = str(task.info)
+            if task.successful():
+                # Inclui o resultado da tarefa (que esperamos que contenha 'zip_bytes')
+                # O resultado de task.result pode ser qualquer coisa que sua tarefa retornou.
+                # Se for um dicionário, ele será serializado para JSON.
+                response_data["result"] = task.result
+            elif task.failed():
+                # task.info contém a exceção ou informações de erro
+                response_data["error_message"] = str(task.info)
 
-        return JsonResponse(response_data)
+            return JsonResponse(response_data)
+        except Exception as e:
+            logger.error(f"Erro ao verificar status da tarefa {task_id}: {e}", exc_info=True)
+            return JsonResponse({"error": f"Erro interno ao verificar status da tarefa: {str(e)}"}, status=500)
 
+# --- View para Download de ZIP (API - mantida, mas não usada no fluxo principal agora) ---
+@method_decorator(csrf_exempt, name='dispatch')
 class DownloadZipView(View):
-    """Recebe o ZIP Base64 da task e retorna como um arquivo para o usuário."""
-    
+    """Permite o download de um arquivo ZIP gerado por uma tarefa Celery.
+    Retorna os bytes do ZIP em base64 dentro de um JSON, não um arquivo direto.
+    """
+
     def get(self, request, task_id):
-        result = AsyncResult(task_id)
+        try:
+            task = AsyncResult(task_id)
+            if task.successful():
+                result = task.result
+                zip_bytes_base64 = result.get('zip_bytes') # Espera um dicionário com 'zip_bytes'
+                if zip_bytes_base64:
+                    return JsonResponse({"zip_bytes": zip_bytes_base64}, status=200)
+                else:
+                    logger.warning(f"Tarefa {task_id} bem-sucedida, mas 'zip_bytes' não encontrado no resultado.")
+                    return JsonResponse({"error": "Dados ZIP não encontrados no resultado da tarefa."}, status=404)
+            else:
+                status_msg = task.status
+                error_msg = str(task.info) if task.failed() else "Tarefa ainda não concluída."
+                return JsonResponse({"error": error_msg, "status": status_msg}, status=400)
+        except Exception as e:
+            logger.error(f"Erro ao tentar baixar ZIP da tarefa {task_id}: {e}", exc_info=True)
+            return JsonResponse({"error": f"Erro interno ao processar download: {str(e)}"}, status=500)
 
-        if result.state == "SUCCESS" and result.result:
-            zip_bytes_base64 = result.result.get("zip_bytes", "")
-            if not zip_bytes_base64:
-                return HttpResponse("Erro: Arquivo ZIP não encontrado.", status=404)
+# --- View para Juntar PDFs (API) ---
+@method_decorator(csrf_exempt, name='dispatch')
+class MergePDFsView(View):
+    """Inicia uma tarefa Celery para juntar múltiplos PDFs."""
 
-            zip_bytes = base64.b64decode(zip_bytes_base64)  # Decodifica os bytes
-            response = HttpResponse(zip_bytes, content_type="application/zip")
-            now = datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
-            response["Content-Disposition"] = f'attachment; filename="nfse_convertido_{now}.zip"'
-            return response
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            pdf_contents_base64 = data.get("pdf_contents_base64")
+            output_filename = data.get("output_filename", "merged_document.pdf")
 
-        return HttpResponse("A tarefa ainda está em processamento ou falhou.", status=400)
+            if not pdf_contents_base64:
+                return JsonResponse({"error": "Nenhum conteúdo PDF fornecido para merge."}, status=400)
+
+            # Inicia a tarefa assíncrona para merge
+            task = merge_pdfs_task.delay(pdf_contents_base64, output_filename)
+            return JsonResponse({"task_id": task.id, "message": "Merge iniciado!"})
+
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Requisição JSON inválida."}, status=400)
+        except Exception as e:
+            logger.error(f"Erro ao iniciar merge de PDFs: {e}", exc_info=True)
+            return JsonResponse({"error": f"Erro interno do servidor: {str(e)}"}, status=500)
 
 
-class StreamlitAppRedirectView(View):
-    """
-    Redireciona o usuário para o URL da aplicação Streamlit.
-    """
-    #@method_decorator(login_required) # Opcional: Se quiser que apenas usuários logados acessem essa rota
-    def get(self, request):
-        # Para desenvolvimento local, o Streamlit roda na porta 8501 por padrão.
-        # Para produção no Heroku, usaremos uma variável de ambiente.
-        # Configure esta variável no Heroku CLI:
-        # heroku config:set STREAMLIT_APP_URL="https://your-streamlit-app-on-streamlit-cloud.streamlit.app" -a seu-app-django-heroku
-        streamlit_url = os.getenv("STREAMLIT_APP_URL", "http://localhost:8501")
-
-        if not streamlit_url:
-            # Caso a variável de ambiente não esteja configurada em produção
-            return JsonResponse({"error": "URL do Streamlit não configurada."}, status=500)
-
-        return HttpResponseRedirect(streamlit_url)
-    
-
-# --- NOVA VIEW NO DJANGO PARA ENVIAR XML PARA A API EXTERNA ---
-@method_decorator(csrf_exempt, name='dispatch') # Use isso com CAUTELA e apenas se entender os riscos de segurança!
+# --- View para Enviar XML para API Externa (API) ---
+@method_decorator(csrf_exempt, name='dispatch')
 class SendXMLToExternalAPIView(View):
-    """
-    Recebe um XML do frontend (Streamlit) e o envia para uma API externa.
-    """
-    #@method_decorator(login_required) # Mantenha a proteção de login se for para usuários autenticados
+    """Recebe um XML do frontend (Streamlit) e o envia para uma API externa."""
+
     def post(self, request):
         try:
             data = json.loads(request.body)
@@ -243,35 +187,52 @@ class SendXMLToExternalAPIView(View):
             if not xml_content:
                 return JsonResponse({"status": "error", "error": "Conteúdo XML ausente."}, status=400)
 
-            # --- AQUI VOCÊ FARIA A CHAMADA PARA A SUA API EXTERNA ---
-            # Exemplo de URL de API externa (substitua pela sua real)
             external_api_url = os.getenv("EXTERNAL_API_SEND_URL", "https://api.example.com/send_nfse")
 
+            if not external_api_url:
+                logger.error("EXTERNAL_API_SEND_URL não configurada nas variáveis de ambiente.")
+                return JsonResponse({"status": "error", "error": "URL da API externa não configurada."}, status=500)
+
             headers = {
-                "Content-Type": "application/xml", # Ou 'application/json' se a API externa espera JSON
-                # "Authorization": f"Bearer {os.getenv('EXTERNAL_API_TOKEN')}" # Se sua API externa exigir autenticação
+                "Content-Type": "application/xml",
             }
 
-            logger.info(f"Enviando XML de {file_name} para API externa.")
+            logger.info(f"Enviando XML de {file_name} para API externa em {external_api_url}.")
+            # Note: data=xml_content.encode('utf-8') se a API externa espera o XML como corpo RAW
+            # Se a API externa espera JSON, você precisaria mudar o headers e json=data_to_send
             api_response = requests.post(external_api_url, data=xml_content.encode('utf-8'), headers=headers, timeout=30)
-            api_response.raise_for_status() # Lança exceção para erros HTTP
+            api_response.raise_for_status() # Lança HTTPError para status de erro (4xx ou 5xx)
 
-            # Assumindo que a API externa retorna um JSON com um UUID ou status
-            external_api_data = api_response.json()
+            # Tenta ler a resposta como JSON
+            try:
+                external_api_data = api_response.json()
+            except json.JSONDecodeError:
+                logger.warning(f"Resposta da API externa não é JSON: {api_response.text}")
+                # Se a API externa não retorna JSON, você pode tratar isso aqui.
+                # Por exemplo, retornar um sucesso básico se o status for 2xx.
+                if 200 <= api_response.status_code < 300:
+                    return JsonResponse({"status": "success", "message": f"XML enviado com sucesso! API retornou status {api_response.status_code}."})
+                else:
+                    return JsonResponse({"status": "error", "error": f"API externa retornou status {api_response.status_code} e resposta não-JSON: {api_response.text}"}, status=500)
+
             uuid_retornado = external_api_data.get("uuid", "N/A")
 
             logger.info(f"XML de {file_name} enviado com sucesso. UUID: {uuid_retornado}")
             return JsonResponse({"status": "success", "uuid": uuid_retornado, "message": "XML enviado com sucesso!"})
 
         except json.JSONDecodeError:
+            logger.error("Requisição JSON inválida recebida na SendXMLToExternalAPIView.", exc_info=True)
             return JsonResponse({"status": "error", "error": "Requisição JSON inválida."}, status=400)
         except requests.exceptions.RequestException as e:
             error_message = f"Erro ao comunicar com API externa: {str(e)}"
             if e.response is not None:
-                error_message += f" - Detalhes: {e.response.text}"
+                try:
+                    error_data = e.response.json()
+                    error_message += f" - Detalhes da API: {error_data}"
+                except json.JSONDecodeError:
+                    error_message += f" - Detalhes da API (texto): {e.response.text}"
             logger.error(error_message, exc_info=True)
             return JsonResponse({"status": "error", "error": error_message}, status=500)
         except Exception as e:
-            logger.error(f"Erro inesperado no envio de XML: {e}", exc_info=True)
+            logger.error(f"Erro inesperado no envio de XML para API externa: {e}", exc_info=True)
             return JsonResponse({"status": "error", "error": f"Erro interno do servidor: {str(e)}"}, status=500)
-

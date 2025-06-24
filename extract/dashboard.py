@@ -100,106 +100,195 @@ def call_django_backend_to_process_pdfs(files_data: dict) -> tuple[list, list]:
         return [], f"Erro HTTP do backend: {e.response.status_code} - {error_detail}"
     except Exception as e:
         return [], f"Erro inesperado ao chamar o backend: {str(e)}"
+def call_django_backend(endpoint: str, method: str = "POST", files_data: dict = None, json_data: dict = None) -> dict:
+    """
+    Função genérica para fazer requisições HTTP para o backend Django.
+    :param endpoint: O caminho da URL no backend (ex: "/upload-e-processar-pdf/").
+    :param method: O método HTTP ("POST" ou "GET").
+    :param files_data: Dicionário de arquivos para enviar (para POST com files).
+                       Formato: {"nome_campo": ("nome_arquivo.pdf", conteudo_bytes, "application/pdf")}
+    :param json_data: Dicionário de dados JSON para enviar (para POST com JSON).
+    :return: A resposta JSON do backend ou None em caso de erro.
+    """
+    url = f"{DJANGO_BACKEND_URL}{endpoint}"
+    headers = {} # Nenhuma autenticação adicional (login_required removido)
 
-# Sua função call_django_backend (sempre use-a para comunicação com o Django)
-def call_django_backend(endpoint, method="POST", files_data=None, json_data=None):
-    # ... (seu código existente da função) ...
-    # Certifique-se que ela lida com 'application/json' para json_data
-    # e 'multipart/form-data' para files_data (requests faz isso automaticamente)
-    # E que ela retorna response.json() ou None em caso de erro.
-    pass # Código omitido por brevidade, assumindo que está correto
+    st.sidebar.markdown(f"**Chamando:** `{method}` `{url}`")
 
+    try:
+        response = None
+        if method.upper() == "POST":
+            if files_data:
+                # requests.post com 'files' cuida do Content-Type como multipart/form-data
+                # files_data deve ser um dicionário onde o valor é (filename, content_bytes, content_type)
+                # Ex: {"files": [("file1.pdf", b"...", "application/pdf"), ...]}
+                # No seu caso, files_data já está no formato {name: content_bytes}, então precisamos ajustar
+                files_payload = {
+                    "files": [(name, content, "application/pdf") for name, content in files_data.items()]
+                }
+                response = requests.post(url, files=files_payload, headers=headers, timeout=120)
+            elif json_data:
+                headers["Content-Type"] = "application/json"
+                response = requests.post(url, json=json_data, headers=headers, timeout=120)
+            else:
+                response = requests.post(url, headers=headers, timeout=120) # POST sem dados
+        elif method.upper() == "GET":
+            response = requests.get(url, headers=headers, timeout=120)
+        else:
+            st.error(f"Método HTTP '{method}' não suportado na função de backend.")
+            return None
 
-# NOVA FUNÇÃO: Para enviar um único XML para a API externa via seu Django Backend
+        response.raise_for_status()  # Lança um HTTPError para respostas 4xx/5xx
+
+        # Tenta retornar JSON, caso contrário, loga e retorna None
+        try:
+            return response.json()
+        except json.JSONDecodeError:
+            st.error(f"Backend retornou uma resposta não-JSON válida do endpoint '{endpoint}': {response.text[:500]}...")
+            st.sidebar.error(f"Resposta bruta (não-JSON): {response.text[:500]}...") # Exibir no sidebar para debug
+            return None
+
+    except requests.exceptions.Timeout:
+        st.error(f"O tempo limite de conexão com o backend em '{url}' foi excedido. Tente novamente mais tarde.")
+        return None
+    except requests.exceptions.ConnectionError:
+        st.error(f"Não foi possível conectar ao backend Django em '{url}'. Verifique o URL ou se o servidor está online.")
+        return None
+    except requests.exceptions.HTTPError as e:
+        error_detail = ""
+        try:
+            error_data = e.response.json()
+            error_detail = error_data.get("detail", error_data.get("error", "Erro desconhecido na resposta JSON."))
+        except json.JSONDecodeError:
+            error_detail = e.response.text # Se não for JSON, pegue o texto puro
+        st.error(f"Erro HTTP do backend ({e.response.status_code}) ao chamar '{endpoint}': {error_detail}")
+        st.sidebar.error(f"Detalhes do erro HTTP: {e.response.text[:500]}...")
+        return None
+    except Exception as e:
+        st.error(f"Erro inesperado ao chamar o backend em '{endpoint}': {str(e)}")
+        return None
+
+# --- Função para Enviar XML para a API Externa (Via Backend Django) ---
 def send_xml_to_external_api(xml_content: str, file_name: str) -> dict:
-    st.info(f"Enviando '{file_name}' para a API externa...")
+    """
+    Envia um único conteúdo XML para a API externa através do endpoint do Django.
+    :param xml_content: Conteúdo XML como string.
+    :param file_name: Nome do arquivo XML.
+    :return: Resposta JSON da API externa via Django.
+    """
+    st.sidebar.info(f"Preparando envio de '{file_name}'...")
     data_to_send = {
         "xml_content": xml_content,
         "file_name": file_name
     }
     # Chama o endpoint do Django que, por sua vez, chama a API externa
     response = call_django_backend("/send-xml-to-external-api/", method="POST", json_data=data_to_send)
-    return response # Retorna a resposta da API externa via Django
+    return response
 
+# --- Função Principal de Processamento e Envio ---
+def process_pdfs_and_send_to_api(uploaded_pdfs: list) -> tuple[bool, str]:
+    """
+    Coordena o upload de PDFs, polling do status da tarefa e envio de XMLs para a API externa.
+    :param uploaded_pdfs: Lista de arquivos PDF uploaded pelo usuário.
+    :return: Tupla (sucesso: bool, mensagem de erro: str ou None).
+    """
+    if not uploaded_pdfs:
+        return False, "Nenhum arquivo PDF foi fornecido para processamento."
 
-# Função principal que o frontend chama para processar e enviar
-def process_pdfs_and_send_to_api(files_data_for_backend):
+    # Prepara os dados dos arquivos para enviar ao backend
+    # Note que aqui estamos passando uma lista de tuplas para 'files', como o requests espera
+    files_data_for_backend = {file.name: file.read() for file in uploaded_pdfs}
+
     # 1. Enviar PDFs para processamento e obter task_ids
-    st.info("Enviando PDFs para processamento no backend...")
-    files_to_send = {name: (name, content) for name, content in files_data_for_backend.items()}
-    response_data = call_django_backend("/upload-e-processar-pdf/", method="POST", files_data=files_to_send)
+    st.info("Passo 1/3: Enviando PDFs para processamento no backend...")
+    # call_django_backend espera files_data como {filename: content_bytes}
+    response_data = call_django_backend("/upload-e-processar-pdf/", method="POST", files_data=files_data_for_backend)
 
     if not response_data or "task_ids" not in response_data:
-        st.error("Erro ao iniciar o processamento no backend.")
-        return False, "Erro: Resposta inesperada do backend após o upload."
+        return False, "Erro ao iniciar o processamento no backend: Resposta inesperada ou 'task_ids' ausente."
 
     task_ids = response_data["task_ids"]
-    st.info(f"Processamento iniciado para {len(task_ids)} tarefa(s).")
+    st.success(f"Processamento iniciado para {len(task_ids)} tarefa(s) no backend.")
 
-    all_xml_files = {} # Para armazenar os XMLs de todas as tarefas
+    all_extracted_xmls = {} # Para armazenar os XMLs de todas as tarefas
 
-    for task_id in task_ids:
-        st.write(f"Monitorando tarefa: {task_id}...")
+    # 2. Polling para verificar o status de cada tarefa e extrair XMLs
+    st.info("Passo 2/3: Aguardando conclusão das tarefas e extraindo XMLs...")
+    for i, task_id in enumerate(task_ids):
+        st.write(f"Monitorando tarefa {i+1}/{len(task_ids)}: **{task_id}**...")
         status = "PENDING"
-        task_result = None # Para armazenar o resultado da tarefa quando ela concluir
+        task_result_data = None
 
-        # 2. Polling para verificar o status da tarefa
-        with st.spinner(f"Aguardando conclusão da tarefa {task_id}..."):
-            while status in ["PENDING", "STARTED", "RETRY"]:
-                time.sleep(5) # Espera 5 segundos
-                status_response = call_django_backend(f"/task-status/{task_id}/", method="GET")
+        # Usar um placeholder para atualizar o status em tempo real
+        status_placeholder = st.empty()
 
-                if status_response and "status" in status_response:
-                    status = status_response["status"]
-                    st.write(f"Status da tarefa {task_id}: {status}")
-                    if status == "SUCCESS":
-                        task_result = status_response.get("result")
-                        if task_result and "zip_bytes" in task_result:
-                            st.success(f"Tarefa {task_id} concluída com sucesso! Extraindo XMLs...")
-                            zip_base64_string = task_result["zip_bytes"]
-                            zip_decoded_bytes = base64.b64decode(zip_base64_string)
+        polling_attempts = 0
+        max_polling_attempts = 60 # 60 * 5 segundos = 5 minutos de espera max
+        
+        while status in ["PENDING", "STARTED", "RETRY"] and polling_attempts < max_polling_attempts:
+            status_placeholder.info(f"Status da tarefa {task_id}: **{status}**. Tentativa {polling_attempts + 1}/{max_polling_attempts}")
+            time.sleep(5) # Espera 5 segundos
+            polling_attempts += 1
 
-                            # Abrir o ZIP em memória e extrair os XMLs
+            status_response = call_django_backend(f"/task-status/{task_id}/", method="GET")
+
+            if status_response and "status" in status_response:
+                status = status_response["status"]
+                if status == "SUCCESS":
+                    task_result_data = status_response.get("result")
+                    if task_result_data and "zip_bytes" in task_result_data:
+                        zip_base64_string = task_result_data["zip_bytes"]
+                        zip_decoded_bytes = base64.b64decode(zip_base64_string)
+
+                        # Abrir o ZIP em memória e extrair os XMLs
+                        try:
                             with io.BytesIO(zip_decoded_bytes) as zip_buffer:
                                 with zipfile.ZipFile(zip_buffer, 'r') as zf:
                                     for xml_file_name in zf.namelist():
                                         if xml_file_name.endswith('.xml'):
                                             with zf.open(xml_file_name) as xml_file:
                                                 xml_content = xml_file.read().decode('utf-8')
-                                                all_xml_files[xml_file_name] = xml_content
+                                                all_extracted_xmls[xml_file_name] = xml_content
+                            status_placeholder.success(f"Tarefa {task_id} concluída e XML(s) extraído(s) com sucesso!")
                             break # Sai do loop de polling, tarefa concluída e dados extraídos
-                        else:
-                            st.error(f"Tarefa {task_id} concluída, mas não retornou os dados ZIP esperados.")
-                            return False, f"Tarefa {task_id} concluída sem dados."
-                    elif status == "FAILURE":
-                        st.error(f"A tarefa {task_id} falhou: {status_response.get('error_message', 'Erro desconhecido')}")
-                        return False, f"Tarefa {task_id} falhou."
-                else:
-                    st.warning(f"Não foi possível obter o status para a tarefa {task_id}. Tentando novamente...")
-                    time.sleep(10)
+                        except zipfile.BadZipFile:
+                            return False, f"Erro: O arquivo ZIP retornado pela tarefa {task_id} está corrompido ou não é um ZIP válido."
+                        except Exception as e:
+                            return False, f"Erro ao extrair XMLs do ZIP da tarefa {task_id}: {str(e)}"
+                    else:
+                        return False, f"Tarefa {task_id} concluída, mas não retornou os dados ZIP esperados ('zip_bytes' ausente no 'result')."
+                elif status == "FAILURE":
+                    error_message = status_response.get('error_message', 'Erro desconhecido')
+                    status_placeholder.error(f"A tarefa {task_id} falhou: {error_message}")
+                    return False, f"Tarefa {task_id} falhou: {error_message}"
+            else:
+                status_placeholder.warning(f"Não foi possível obter o status para a tarefa {task_id}. Tentando novamente...")
+                # Não sleep extra aqui, o loop já tem 5s.
 
-    # 3. Se todas as tarefas foram concluídas e os XMLs extraídos, enviar para a API externa
-    if not all_xml_files:
-        st.warning("Nenhum arquivo XML foi extraído para envio.")
-        return False, "Nenhum XML para enviar."
+        if polling_attempts >= max_polling_attempts:
+            return False, f"Tempo limite excedido para a tarefa {task_id}. O processamento não foi concluído."
 
-    st.subheader("Enviando XMLs para API Externa:")
+    if not all_extracted_xmls:
+        return False, "Nenhum arquivo XML foi extraído para envio. Verifique os logs do Celery para possíveis erros de parsing."
+
+    # 3. Enviar XMLs extraídos para a API Externa via Django
+    st.info("Passo 3/3: Enviando XMLs extraídos para a API externa...")
     success_count = 0
     fail_count = 0
-    for file_name, xml_content in all_xml_files.items():
+    for file_name, xml_content in all_extracted_xmls.items():
         send_result = send_xml_to_external_api(xml_content, file_name)
         if send_result and send_result.get("status") == "success":
-            st.success(f"'{file_name}' enviado com sucesso! UUID: {send_result.get('uuid')}")
+            st.success(f"'{file_name}' enviado com sucesso! UUID: {send_result.get('uuid', 'N/A')}")
             success_count += 1
         else:
             st.error(f"Falha ao enviar '{file_name}'. Detalhes: {send_result.get('error', 'Erro desconhecido')}")
             fail_count += 1
 
     if fail_count == 0:
-        st.success(f"Todos os {success_count} XML(s) foram enviados com sucesso para a API externa!")
-        return True, None
+        return True, f"✅ Todos os {success_count} XML(s) foram enviados com sucesso para a API externa!"
     else:
-        return False, f"{success_count} XML(s) enviados com sucesso, {fail_count} falharam."
+        return False, f"❌ {success_count} XML(s) enviados com sucesso, {fail_count} falharam no envio."
+
 
 
 
