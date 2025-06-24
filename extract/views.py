@@ -96,7 +96,10 @@ class UploadEProcessarPDFView(View):
 # --- View para Verificar o Status da Tarefa Celery (API) ---
 @method_decorator(csrf_exempt, name='dispatch')
 class TaskStatusView(View):
-    """Verifica o status de uma tarefa Celery e retorna o resultado se concluída."""
+    """
+    Verifica o status de uma tarefa Celery e retorna o resultado se concluída.
+    Se a tarefa for bem-sucedida, retorna os XMLs extraídos (em base64) e o ZIP.
+    """
 
     def get(self, request, task_id):
         try:
@@ -109,18 +112,23 @@ class TaskStatusView(View):
             }
 
             if task.successful():
-                # Inclui o resultado da tarefa (que esperamos que contenha 'zip_bytes')
-                # O resultado de task.result pode ser qualquer coisa que sua tarefa retornou.
-                # Se for um dicionário, ele será serializado para JSON.
-                response_data["result"] = task.result
+                # O resultado esperado da tarefa 'processar_pdfs' é um dicionário
+                # contendo 'extracted_xmls' e 'zip_bytes'.
+                result = task.result
+                response_data["result"] = result
+
+                # Para debug, você pode verificar o tipo do resultado aqui:
+                # logger.info(f"Resultado da tarefa {task_id}: {type(result)} - {result.keys()}")
+
             elif task.failed():
-                # task.info contém a exceção ou informações de erro
                 response_data["error_message"] = str(task.info)
 
             return JsonResponse(response_data)
         except Exception as e:
             logger.error(f"Erro ao verificar status da tarefa {task_id}: {e}", exc_info=True)
             return JsonResponse({"error": f"Erro interno ao verificar status da tarefa: {str(e)}"}, status=500)
+        
+
 
 # --- View para Download de ZIP (API - mantida, mas não usada no fluxo principal agora) ---
 @method_decorator(csrf_exempt, name='dispatch')
@@ -147,6 +155,7 @@ class DownloadZipView(View):
         except Exception as e:
             logger.error(f"Erro ao tentar baixar ZIP da tarefa {task_id}: {e}", exc_info=True)
             return JsonResponse({"error": f"Erro interno ao processar download: {str(e)}"}, status=500)
+
 
 # --- View para Juntar PDFs (API) ---
 @method_decorator(csrf_exempt, name='dispatch')
@@ -198,8 +207,6 @@ class SendXMLToExternalAPIView(View):
             }
 
             logger.info(f"Enviando XML de {file_name} para API externa em {external_api_url}.")
-            # Note: data=xml_content.encode('utf-8') se a API externa espera o XML como corpo RAW
-            # Se a API externa espera JSON, você precisaria mudar o headers e json=data_to_send
             api_response = requests.post(external_api_url, data=xml_content.encode('utf-8'), headers=headers, timeout=30)
             api_response.raise_for_status() # Lança HTTPError para status de erro (4xx ou 5xx)
 
@@ -208,8 +215,7 @@ class SendXMLToExternalAPIView(View):
                 external_api_data = api_response.json()
             except json.JSONDecodeError:
                 logger.warning(f"Resposta da API externa não é JSON: {api_response.text}")
-                # Se a API externa não retorna JSON, você pode tratar isso aqui.
-                # Por exemplo, retornar um sucesso básico se o status for 2xx.
+                # Se a API externa não retorna JSON, pode ser um sucesso HTTP 2xx sem corpo.
                 if 200 <= api_response.status_code < 300:
                     return JsonResponse({"status": "success", "message": f"XML enviado com sucesso! API retornou status {api_response.status_code}."})
                 else:
