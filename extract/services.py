@@ -346,7 +346,9 @@ class XMLGenerator:
     
     @classmethod
     def gerar_xml_abrasf(cls, dados: Dict) -> str:
-        print(f"Dados recebidos para geração do XML: {json.dumps(dados, indent=4, ensure_ascii=False)}")
+        for i in dados:
+            print(f"Dados recebidos para geração do XML: {json.dumps(dados, indent=4, ensure_ascii=False)}")
+            break
 
         # Criação dos elementos principais
         root = etree.Element("CompNfse", xmlns="http://www.abrasf.org.br/nfse.xsd")
