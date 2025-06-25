@@ -40,13 +40,18 @@ def processar_pdfs(self, files_data):
             try:
                 base_name = os.path.splitext(file_name)[0]
                 xml_file_name = f"{base_name}.xml"
-                xml_content = processor.processar_pdf(project_id, location, processor_id, file_content)
+                json_extraido = processor.processar_pdf(project_id, location, processor_id, file_content)
 
-                if xml_content:
-                    zipf.writestr(xml_file_name, json.dumps(xml_content, ensure_ascii=False, indent=2))
-                    logger.info(f"XML gerado e adicionado ao ZIP para {file_name}.")
-                else:
-                    logger.warning(f"Nenhum XML gerado para {file_name}.")
+                if json_extraido:
+                    try:
+                        # Aqui você converte o JSON extraído em XML de verdade
+                        xml_content = XMLGenerator.gerar_xml_abrasf(json_extraido)
+                        zipf.writestr(xml_file_name, xml_content)
+                        logger.info(f"XML gerado e adicionado ao ZIP para {file_name}.")
+                    except Exception as e:
+                        logger.error(f"Erro ao gerar XML para {file_name}: {e}", exc_info=True)
+                        processed_data[file_name] = f"Erro ao gerar XML: {e}"
+                        raise
 
                 processed_data[file_name] = "Processado com sucesso"
             except Exception as e:
