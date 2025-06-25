@@ -104,25 +104,17 @@ class TaskStatusView(View):
 
     def get(self, request, task_id):
         try:
-            task = AsyncResult(task_id)
-            response_data = {
-                "status": task.status,
-                "ready": task.ready(),
-                "successful": task.successful(),
-                "failed": task.failed(),
-            }
+            result = AsyncResult(task_id)
+            response_data = {"state": result.status}
 
-            if task.successful():
-                # O resultado esperado da tarefa 'processar_pdfs' é um dicionário
-                # contendo 'extracted_xmls' e 'zip_bytes'.
-                result = task.result
-                response_data["result"] = result
 
-                # Para debug, você pode verificar o tipo do resultado aqui:
-                # logger.info(f"Resultado da tarefa {task_id}: {type(result)} - {result.keys()}")
+            if result.status == "SUCCESS":
+                response_data["meta"] = result.result
 
-            elif task.failed():
-                response_data["error_message"] = str(task.info)
+            elif result.status == "FAILURE":
+                response_data["meta"] = {"error": str(result.result)}
+            else:
+                response_data["meta"] = {}
 
             return JsonResponse(response_data)
         except Exception as e:
