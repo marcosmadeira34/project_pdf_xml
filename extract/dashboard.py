@@ -646,11 +646,14 @@ with tab2:
                                             # Se a tarefa for SUCCESS e não houver erros internos, marcar como Concluído
                                             # Isso é genérico, mas pode ser refinado se o backend retornar arquivos específicos processados
                                             # Para os arquivos que foram enviados para esta task_id
-                                            for file_name, original_idx in original_indices_map.items():
-                                                if st.session_state.uploaded_files_info[original_idx]["Status"] == "Processando":
-                                                    st.session_state.uploaded_files_info[original_idx]["Status"] = "Concluído"
-                                                    st.session_state.uploaded_files_info[original_idx]["XML Gerado"] = "Sim"
-                                                    st.session_state.uploaded_files_info[original_idx]["Detalhes"] = "XML gerado e pronto para download."
+                                            processed_summary = meta.get("processed_files_summary", {})
+
+                                            for file_name, status_msg in processed_summary.items():
+                                                if file_name in original_indices_map:
+                                                    idx = original_indices_map[file_name]
+                                                    st.session_state.uploaded_files_info[idx]["Status"] = "Concluído"
+                                                    st.session_state.uploaded_files_info[idx]["XML Gerado"] = "Sim"
+                                                    st.session_state.uploaded_files_info[idx]["Detalhes"] = status_msg
 
                                         elif state == "PENDING" or state == "PROGRESS":
                                             all_tasks_completed = False
