@@ -41,6 +41,7 @@ def processar_pdfs(self, files_data):
                 base_name = os.path.splitext(file_name)[0]
                 xml_file_name = f"{base_name}.xml"
                 json_extraido = processor.processar_pdf(project_id, location, processor_id, file_content)
+                print(f"JSON extraído para {file_name}: {json.dumps(json_extraido, indent=2, ensure_ascii=False)}")
 
                 if json_extraido:
                     try:
