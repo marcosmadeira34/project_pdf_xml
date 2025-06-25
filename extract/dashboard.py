@@ -153,7 +153,10 @@ def process_pdfs_for_extraction(uploaded_pdfs: list) -> None:
 
     # 1. Enviar PDFs para processamento e obter task_ids
     st.info("Passo 1: Enviando PDFs para processamento no backend...")
-    response_data = call_django_backend("/upload-e-processar-pdf/", method="POST", files_data=files_data_for_backend)
+    response_data = call_django_backend("/upload-e-processar-pdf/", method="POST", 
+                                        files_data=files_data_for_backend,
+                                        raw_bytes=True
+                                        )
 
     if not response_data or "task_ids" not in response_data:
         st.session_state.processing_status = "failed"
@@ -508,7 +511,6 @@ with tab1:
                 st.success(f"{new_uploads_count} arquivo(s) novo(s) salvo(s) com sucesso!")
 
 # --- TAB 2: Revisar & Converter ---
-# --- TAB 2: Revisar & Converter ---
 with tab2:
     st.header("Passo 2: Revisar e Converter PDFs para XML")
     st.markdown("Verifique os PDFs carregados e inicie o processo de conversão para XML.")
@@ -594,14 +596,21 @@ with tab2:
                                 start_time = time.time()
                                 total_files_in_tasks = len(files_data_for_backend) # Total de arquivos que foram enviados
 
-                                # Inicializa a sessão de controle de downloads, se necessário
+                                # Inicializações obrigatórias no início da aba/função
                                 if 'downloads_feitos' not in st.session_state:
                                     st.session_state['downloads_feitos'] = set()
 
                                 if 'zip_download_ready' not in st.session_state:
                                     st.session_state['zip_download_ready'] = {}
 
-                                while not all_tasks_completed and (time.time() - start_time < 300):  # Timeout de 5 minutos
+                                # Loop principal de polling para verificar status das tasks
+                                start_time = time.time()
+                                timeout_seconds = 300  # 5 minutos
+                                all_tasks_completed = False
+
+                                progress_bar = st.progress(0)
+
+                                while not all_tasks_completed and (time.time() - start_time < timeout_seconds):
                                     all_tasks_completed = True
                                     completed_count = 0
 
@@ -623,6 +632,8 @@ with tab2:
 
                                         if state == "SUCCESS":
                                             zip_id = meta.get("zip_id")
+
+                                            # Se não baixou ainda este zip, baixa e armazena no session_state
                                             if zip_id and zip_id not in st.session_state['downloads_feitos']:
                                                 zip_bytes = call_django_backend(
                                                     endpoint=f"/download-zip/{zip_id}/",
@@ -630,11 +641,9 @@ with tab2:
                                                     raw_bytes=True
                                                 )
                                                 if zip_bytes:
-                                                    # Salva os dados no session_state para renderizar depois do loop
-                                                    st.session_state['zip_download_ready'] = {
+                                                    st.session_state['zip_download_ready'][zip_id] = {
                                                         "bytes": zip_bytes,
-                                                        "file_name": meta.get("zip_file_name", "resultado.zip"),
-                                                        "zip_id": zip_id
+                                                        "file_name": meta.get("zip_file_name", "resultado.zip")
                                                     }
                                                     st.session_state['downloads_feitos'].add(zip_id)
                                                 else:
@@ -674,6 +683,7 @@ with tab2:
                                             all_tasks_completed = True
                                             completed_count += total_files_in_tasks
 
+                                    # Atualiza a barra de progresso
                                     current_progress = min(1.0, completed_count / total_files_in_tasks) if total_files_in_tasks > 0 else 0
                                     progress_bar.progress(current_progress)
 
@@ -682,18 +692,16 @@ with tab2:
 
                                 progress_bar.empty()
 
-                                # Renderiza o botão de download após o loop, se o ZIP foi salvo no session_state
-                                if "zip_download_ready" in st.session_state and "bytes" in st.session_state["zip_download_ready"]:
-                                    zip_info = st.session_state["zip_download_ready"]
+                                # Renderiza todos os botões de download para os arquivos ZIP que já foram baixados
+                                for zip_id, zip_info in st.session_state['zip_download_ready'].items():
                                     st.download_button(
-                                        label="📥 Baixar XMLs em ZIP",
+                                        label=f"📥 Baixar XMLs em ZIP ({zip_info['file_name']})",
                                         data=zip_info["bytes"],
                                         file_name=zip_info["file_name"],
                                         mime="application/zip",
-                                        key=f"download_btn_{zip_info['zip_id']}"
+                                        key=f"download_btn_{zip_id}"
                                     )
-                                #else:
-                                    #st.rerun() 
+                                
 
         st.subheader("Status dos PDFs Carregados:")
         st.dataframe(df_files[['Nome do Arquivo', 'Status', 'XML Gerado', 'Status Envio']], use_container_width=True)
