@@ -15,6 +15,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.http import FileResponse, Http404
 from .models import ArquivoZip
+from django.http import FileResponse, Http404
+from io import BytesIO
 
 # Importa as classes e funções do seu processador e tarefas Celery
 # Certifique-se de que esses imports estão corretos para o seu projeto
@@ -128,14 +130,21 @@ class TaskStatusView(View):
 # --- View para Download de ZIP (API - mantida, mas não usada no fluxo principal agora) ---
 @method_decorator(csrf_exempt, name='dispatch')
 class DownloadZipView(View):
-    def get(self, request, task_id):  # <- Adicione o task_id aqui
+    def get(self, request, task_id):
         try:
             zip_model = ArquivoZip.objects.get(id=task_id)
-            response = FileResponse(zip_model.arquivo.open("rb"), content_type="application/zip")
-            response['Content-Disposition'] = f'attachment; filename="{zip_model.arquivo.name.split("/")[-1]}"'
-            return response
+
+            if not zip_model.zip_bytes:
+                raise Http404("Arquivo ZIP não disponível no banco de dados.")
+
+            return FileResponse(
+                BytesIO(zip_model.zip_bytes),
+                as_attachment=True,
+                filename=f"{task_id}.zip",
+                content_type="application/zip"
+            )
         except ArquivoZip.DoesNotExist:
-            raise Http404("Arquivo ZIP não encontrado no servidor.")
+            raise Http404("Arquivo ZIP não encontrado.")
 
 
 # --- View para Juntar PDFs (API) ---

@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 @shared_task(bind=True)
 def processar_pdfs(self, files_data):
-    """Processa múltiplos PDFs, gera XMLs e cria um ZIP salvo em disco."""
+    """Processa múltiplos PDFs, gera XMLs e salva o ZIP no banco de dados."""
     processor = DocumentAIProcessor()
     project_id = os.getenv("PROJECT_ID")
     location = os.getenv("LOCATION")
@@ -33,7 +33,6 @@ def processar_pdfs(self, files_data):
         raise ValueError("files_data deve ser um dicionário com nomes de arquivos como chaves e bytes como valores.")
 
     processed_data = {}
-    extracted_xmls = {}
     zip_buffer = io.BytesIO()
 
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
@@ -44,7 +43,6 @@ def processar_pdfs(self, files_data):
                 xml_content = processor.processar_pdf(project_id, location, processor_id, file_content)
 
                 if xml_content:
-                    extracted_xmls[xml_file_name] = xml_content
                     zipf.writestr(xml_file_name, json.dumps(xml_content, ensure_ascii=False, indent=2))
                     logger.info(f"XML gerado e adicionado ao ZIP para {file_name}.")
                 else:
@@ -54,19 +52,15 @@ def processar_pdfs(self, files_data):
             except Exception as e:
                 logger.error(f"Erro ao processar o PDF {file_name}: {e}", exc_info=True)
                 processed_data[file_name] = f"Erro no processamento: {str(e)}"
-                raise  # Re-raise para Celery marcar como FAILED
+                raise  # re-lança para o Celery marcar como FAILED
 
-    # Gerar nome único do ZIP e salvar em /tmp
     zip_buffer.seek(0)
     zip_bytes = zip_buffer.read()
 
-    # Criar instância e salvar no banco
-    zip_file = ArquivoZip()
-    zip_file.arquivo.save(f"{uuid.uuid4()}.zip", ContentFile(zip_bytes))
-    zip_file.save()
+    zip_model = ArquivoZip.objects.create(zip_bytes=zip_bytes)
 
     return {
-        'zip_id': str(zip_file.id),
+        'zip_id': str(zip_model.id),
         'processed_files_summary': processed_data,
     }
 
