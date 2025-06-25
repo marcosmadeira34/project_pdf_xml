@@ -130,26 +130,27 @@ class DownloadZipView(View):
     def get(self, request, task_id):
         try:
             task = AsyncResult(task_id)
-            if task.successful():
-                result = task.result
-                zip_filename = result.get('zip_file_name')
-                if not zip_filename:
-                    return JsonResponse({"error": "ZIP não encontrado no resultado."}, status=404)
+            if not task.successful():
+                raise Http404("Tarefa ainda não foi concluída com sucesso.")
 
-                zip_path = f"/tmp/{zip_filename}"
-                if not os.path.exists(zip_path):
-                    raise Http404("Arquivo ZIP não encontrado no servidor.")
+            result = task.result
+            zip_filename = result.get('zip_file_name')  # <-- isso precisa existir!
 
-                return FileResponse(
-                    open(zip_path, 'rb'),
-                    as_attachment=True,
-                    filename=zip_filename
-                )
-            else:
-                return JsonResponse({"error": "Tarefa ainda não finalizada ou falhou."}, status=400)
+            if not zip_filename:
+                raise Http404("Nome do arquivo ZIP não está presente no resultado da tarefa.")
+
+            zip_path = f"/tmp/{zip_filename}"
+            if not os.path.exists(zip_path):
+                raise Http404("Arquivo ZIP não encontrado no servidor.")
+
+            # Retorna o arquivo diretamente como FileResponse
+            response = FileResponse(open(zip_path, 'rb'), content_type='application/zip')
+            response['Content-Disposition'] = f'attachment; filename="{zip_filename}"'
+            return response
+
         except Exception as e:
             logger.error(f"Erro ao tentar baixar ZIP: {e}", exc_info=True)
-            return JsonResponse({"error": "Erro ao processar download."}, status=500)
+            return JsonResponse({"error": f"Erro interno: {str(e)}"}, status=500)
 
 
 # --- View para Juntar PDFs (API) ---

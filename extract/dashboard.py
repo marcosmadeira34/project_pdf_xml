@@ -615,14 +615,12 @@ with tab2:
                                         if state == "SUCCESS":
                                             # Baixa o arquivo ZIP retornado pelo backend
                                             zip_bytes = get_zip_from_backend(task_id)
-                                            print(f"DEBUG - zip_bytes para task_id {task_id}:", zip_bytes
-                                                  )
                                             if zip_bytes:
-                                                st.success("Processamento finalizado! Baixe o arquivo ZIP abaixo:")
+                                                zip_file_name = f"{task_id}.zip"
                                                 st.download_button(
-                                                    label="📥 Baixar ZIP",
+                                                    label="📥 Baixar XMLs em ZIP",
                                                     data=zip_bytes,
-                                                    file_name="notas_xml.zip",
+                                                    file_name=zip_file_name,
                                                     mime="application/zip"
                                                 )
                                             else:
