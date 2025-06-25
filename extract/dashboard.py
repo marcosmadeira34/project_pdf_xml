@@ -692,8 +692,8 @@ with tab2:
                                         mime="application/zip",
                                         key=f"download_btn_{zip_info['zip_id']}"
                                     )
-                                else:
-                                    st.rerun() 
+                                #else:
+                                    #st.rerun() 
 
         st.subheader("Status dos PDFs Carregados:")
         st.dataframe(df_files[['Nome do Arquivo', 'Status', 'XML Gerado', 'Status Envio']], use_container_width=True)
