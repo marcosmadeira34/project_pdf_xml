@@ -616,13 +616,13 @@ with tab2:
 
                                         # Atualizar o status dos arquivos individuais se possível
                                         if state == "SUCCESS":
-                                            # Baixa o arquivo ZIP retornado pelo backend
+                                            # Agora usamos o zip_id corretamente para montar a URL do download
                                             zip_id = meta.get("zip_id")
                                             if zip_id:
                                                 zip_bytes = call_django_backend(
                                                     endpoint=f"/download-zip/{zip_id}/",
                                                     method="GET",
-                                                    raw_bytes=True
+                                                    raw_bytes=True  # Essa flag controla o retorno em bytes na sua função
                                                 )
                                                 if zip_bytes:
                                                     st.download_button(
