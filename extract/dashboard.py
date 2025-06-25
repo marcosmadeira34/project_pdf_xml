@@ -668,7 +668,7 @@ with tab2:
                                         )
                                         if task_status_final and task_status_final.get("state") == "SUCCESS":
                                             zip_response = call_django_backend(
-                                                endpoint=f"/api/download-xmls/{task_id}/", # ENDPOINT REAL NO SEU DJANGO para download do ZIP
+                                                endpoint=f"/download-zip/{task_id}/", # ENDPOINT REAL NO SEU DJANGO para download do ZIP
                                                 method="GET"
                                             )
                                             if zip_response and hasattr(zip_response, 'content'): # Verifica se é um objeto response com conteúdo
