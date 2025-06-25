@@ -598,6 +598,9 @@ with tab2:
                                 if 'downloads_feitos' not in st.session_state:
                                     st.session_state['downloads_feitos'] = set()
 
+                                if 'zip_download_ready' not in st.session_state:
+                                    st.session_state['zip_download_ready'] = {}
+
                                 while not all_tasks_completed and (time.time() - start_time < 300):  # Timeout de 5 minutos
                                     all_tasks_completed = True
                                     completed_count = 0
@@ -691,8 +694,8 @@ with tab2:
                                     # Remove após renderizar, se quiser evitar múltiplos cliques:
                                     # del st.session_state['zip_download_ready']
 
-                                
-                                st.rerun() # Reruns para atualizar o DataFrame
+                                else:
+                                    st.rerun() # Reruns para atualizar o DataFrame
 
         st.subheader("Status dos PDFs Carregados:")
         st.dataframe(df_files[['Nome do Arquivo', 'Status', 'XML Gerado', 'Status Envio']], use_container_width=True)
