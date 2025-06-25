@@ -362,20 +362,18 @@ class XMLGenerator:
 
 
         etree.SubElement(inf_nfse, "CodigoVerificacao").text = codigo_verificacao_clean
+        
         data_emissao = str(dados.get("dataEmissao", "")).replace(" às ", " ")
-        print(f"A data de emissão é: {data_emissao} 1")
+        if not data_emissao.strip():
+            raise ValueError("Campo 'dataEmissao' está ausente ou vazio no JSON extraído.")
 
         try:
             data_emissao_obj = parse(data_emissao, dayfirst=True)
             data_emissao_formatada = data_emissao_obj.strftime("%Y-%m-%dT%H:%M:%S")
-            print(f"Data de emissão formatada: {data_emissao_formatada}")
         except Exception as e:
-            data_emissao_formatada = ""
-            print(f"Erro ao converter a data de emissão: {data_emissao} -> {e}")
+            raise ValueError(f"Erro ao converter a data de emissão '{data_emissao}': {e}")
 
-        # Agora você pode usar a data formatada
         etree.SubElement(inf_nfse, "DataEmissao").text = data_emissao_formatada
-        print(f"A data de emissão é: {data_emissao_formatada} 2")
 
         # Valores da NFS-e
         valores_nfse = etree.SubElement(inf_nfse, "ValoresNfse")
