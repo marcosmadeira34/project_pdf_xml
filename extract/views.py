@@ -14,6 +14,7 @@ from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.http import FileResponse, Http404
+from .models import ArquivoZip
 
 # Importa as classes e funções do seu processador e tarefas Celery
 # Certifique-se de que esses imports estão corretos para o seu projeto
@@ -127,27 +128,13 @@ class TaskStatusView(View):
 # --- View para Download de ZIP (API - mantida, mas não usada no fluxo principal agora) ---
 @method_decorator(csrf_exempt, name='dispatch')
 class DownloadZipView(View):
-    def get(self, request, task_id):
+    def get(self, request, zip_id):
         try:
-            task = AsyncResult(task_id)
-            if not task.successful():
-                raise Http404("Tarefa ainda não foi concluída com sucesso.")
-
-            result = task.result
-            zip_filename = result.get('zip_file_name')  # <-- isso precisa existir!
-
-            if not zip_filename:
-                raise Http404("Nome do arquivo ZIP não está presente no resultado da tarefa.")
-
-            zip_path = f"/tmp/{zip_filename}"
-            if not os.path.exists(zip_path):
-                raise Http404("Arquivo ZIP não encontrado no servidor.")
-
-            return FileResponse(open(zip_path, 'rb'), content_type='application/zip')
-
-        except Exception as e:
-            logger.error(f"Erro ao tentar baixar ZIP: {e}", exc_info=True)
-            return JsonResponse({"error": f"Erro interno: {str(e)}"}, status=500)
+            zip_file = ArquivoZip.objects.get(id=zip_id)
+            response = FileResponse(zip_file.arquivo, as_attachment=True, filename='resultado.zip')
+            return response
+        except ArquivoZip.DoesNotExist:
+            raise Http404("Arquivo ZIP não encontrado.")
 
 
 # --- View para Juntar PDFs (API) ---

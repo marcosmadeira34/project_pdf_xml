@@ -614,17 +614,24 @@ with tab2:
                                         # Atualizar o status dos arquivos individuais se possível
                                         if state == "SUCCESS":
                                             # Baixa o arquivo ZIP retornado pelo backend
-                                            zip_bytes = get_zip_from_backend(task_id)
-                                            if zip_bytes:
-                                                zip_file_name = f"{task_id}.zip"
-                                                st.download_button(
-                                                    label="📥 Baixar XMLs em ZIP",
-                                                    data=zip_bytes,
-                                                    file_name=zip_file_name,
-                                                    mime="application/zip"
+                                            zip_file_name = meta.get("zip_file_name")
+                                            if zip_file_name:
+                                                zip_bytes = call_django_backend(
+                                                    endpoint=f"/download-zip/{zip_file_name}/",
+                                                    method="GET",
+                                                    raw_bytes=True  # você precisa garantir que isso retorne bytes, não JSON
                                                 )
+                                                if zip_bytes:
+                                                    st.download_button(
+                                                        label="📥 Baixar XMLs em ZIP",
+                                                        data=zip_bytes,
+                                                        file_name=zip_file_name,
+                                                        mime="application/zip"
+                                                    )
+                                                else:
+                                                    st.error("Erro ao recuperar o arquivo ZIP do backend.")
                                             else:
-                                                st.error("Erro ao recuperar o arquivo ZIP do backend.")
+                                                st.error("O backend não retornou o nome do arquivo ZIP.")
 
                                             completed_count += processed_files_in_task
                                             if errored_files_in_task:

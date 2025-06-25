@@ -12,6 +12,7 @@ import logging
 import PyPDF2
 import json
 import uuid
+from .models import ArquivoZip
 
 logger = logging.getLogger(__name__)
 
@@ -57,15 +58,16 @@ def processar_pdfs(self, files_data):
 
     # Gerar nome único do ZIP e salvar em /tmp
     zip_buffer.seek(0)
-    zip_filename = f"{uuid.uuid4()}.zip"
-    zip_path = os.path.join("/tmp", zip_filename)
+    zip_bytes = zip_buffer.read()
 
-    with open(zip_path, 'wb') as f:
-        f.write(zip_buffer.read())
+    # Criar instância e salvar no banco
+    zip_file = ArquivoZip()
+    zip_file.arquivo.save(f"{uuid.uuid4()}.zip", ContentFile(zip_bytes))
+    zip_file.save()
 
     return {
-        'zip_file_name': zip_filename,
-        'processed_files_summary': processed_data
+        'zip_id': str(zip_file.id),
+        'processed_files_summary': processed_data,
     }
 
 
