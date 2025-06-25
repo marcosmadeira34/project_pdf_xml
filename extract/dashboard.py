@@ -627,16 +627,14 @@ with tab2:
                                                     raw_bytes=True
                                                 )
                                                 if zip_bytes:
-                                                    st.download_button(
-                                                        label="📥 Baixar XMLs em ZIP",
-                                                        data=zip_bytes,
-                                                        file_name=meta.get("zip_file_name", "resultado.zip"),
-                                                        mime="application/zip",
-                                                        key=f"download_btn_{zip_id}"  # Evita múltiplas chaves iguais
-                                                    )
-                                                    st.session_state['downloads_feitos'].add(zip_id)
+                                                    # Salva no session_state para exibir depois do loop
+                                                    st.session_state['zip_download_ready'] = {
+                                                        "bytes": zip_bytes,
+                                                        "file_name": meta.get("zip_file_name", "resultado.zip")
+                                                    }
                                                 else:
-                                                    st.error("Erro ao recuperar o arquivo ZIP do backend.")
+                                                    st.error(f"Falha ao baixar o ZIP para a tarefa {task_id}.")
+
                                             elif not zip_id:
                                                 st.error("O backend não retornou o ID do arquivo ZIP.")
 
@@ -680,40 +678,20 @@ with tab2:
 
                                 progress_bar.empty()
 
-                                # Após o loop, se todas as tarefas terminaram (sucesso ou falha)
-                                # if all_tasks_completed:
-                                #     st.success("Verificação de status concluída!")
-                                #     # Tenta baixar o ZIP para cada tarefa concluída com sucesso
-                                #     for task_id in st.session_state['active_task_ids']:
-                                #         task_status_final = call_django_backend(
-                                #             endpoint=f"/task-status/{task_id}/",
-                                #             method="GET"
-                                #         )
-                                #         if task_status_final and task_status_final.get("state") == "SUCCESS":
-                                #             zip_response = call_django_backend(
-                                #                 endpoint=f"/download-zip/{task_id}/", # ENDPOINT REAL NO SEU DJANGO para download do ZIP
-                                #                 method="GET",
-                                #                 raw_bytes=True
-                                #             )
-                                #             if zip_response and hasattr(zip_response, 'content'): # Verifica se é um objeto response com conteúdo
-                                #                 zip_bytes = zip_response.content
-                                #                 st.download_button(
-                                #                     label=f"Baixar XMLs Processados (Tarefa {task_id[:6]})",
-                                #                     data=zip_bytes,
-                                #                     file_name=f"xmls_processados_{task_id}.zip",
-                                #                     mime="application/zip",
-                                #                     key=f"download_zip_{task_id}"
-                                #                 )
-                                #                 # Aqui você pode, opcionalmente, descompactar e salvar os XMLs localmente
-                                #                 # para visualização futura na interface. Isso requer mais lógica.
-                                #             else:
-                                #                 st.error(f"Falha ao baixar o ZIP da tarefa {task_id}.")
-                                #         elif task_status_final and task_status_final.get("state") == "FAILURE":
-                                #             st.error(f"Tarefa {task_id} falhou. Detalhes: {task_status_final.get('meta', {}).get('error', 'Verifique os logs do backend.')}")
-                                #     st.session_state['active_task_ids'] = []
-                                # else:
-                                #     st.warning("Processamento ainda em andamento ou tempo limite excedido.")
+                                # Renderiza o botão de download apenas após o fim do loop
+                                if 'zip_download_ready' in st.session_state:
+                                    zip_info = st.session_state['zip_download_ready']
+                                    st.download_button(
+                                        label="📥 Baixar XMLs em ZIP",
+                                        data=zip_info["bytes"],
+                                        file_name=zip_info["file_name"],
+                                        mime="application/zip",
+                                        key=f"download_btn_{zip_info['zip_id']}"
+                                    )
+                                    # Remove após renderizar, se quiser evitar múltiplos cliques:
+                                    # del st.session_state['zip_download_ready']
 
+                                
                                 st.rerun() # Reruns para atualizar o DataFrame
 
         st.subheader("Status dos PDFs Carregados:")
