@@ -391,6 +391,7 @@ class XMLGenerator:
         # Tenta converter para float, lançando erro se for inválido
         if aliquota_formatada:
             aliquota_float = float(aliquota_formatada)
+            print(f"Alíquota formatada linha 394: {aliquota_float}")
         else:
             raise ValueError(f"Valor inválido para alíquota: {aliquota}")
 
@@ -528,6 +529,7 @@ class XMLGenerator:
         
         if aliquota_servico_formatada:
             aliquota_servico_float = float(aliquota_servico_formatada)
+            print(f"Alíquota formatada linha 532: {aliquota_servico_float}")
         else:
             raise ValueError(f"Valor inválido para alíquota: {aliquota_servico}")
         etree.SubElement(valores_servico, "Aliquota").text = str(aliquota_servico_float)    
