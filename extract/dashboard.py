@@ -621,7 +621,7 @@ with tab2:
                                                 st.success("Processamento finalizado! Baixe o arquivo ZIP abaixo:")
                                                 st.download_button(
                                                     label="📥 Baixar ZIP",
-                                                    data=zip_data,
+                                                    data=zip_bytes,
                                                     file_name="notas_xml.zip",
                                                     mime="application/zip"
                                                 )
