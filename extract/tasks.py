@@ -57,16 +57,15 @@ def processar_pdfs(self, files_data):
 
     # Gerar nome único do ZIP e salvar em /tmp
     zip_buffer.seek(0)
-    zip_filename = f"{uuid.uuid4().hex}.zip"
-    zip_path = f"/tmp/{zip_filename}"
-    with open(zip_path, "wb") as f:
+    zip_filename = f"{uuid.uuid4()}.zip"
+    zip_path = os.path.join("/tmp", zip_filename)
+
+    with open(zip_path, 'wb') as f:
         f.write(zip_buffer.read())
 
-    # Retornar apenas o nome do ZIP
     return {
-        'extracted_xmls': extracted_xmls,
-        'processed_files_summary': processed_data,
-        'zip_file_name': zip_filename  # <-- usado depois no DownloadZipView
+        'zip_file_name': zip_filename,
+        'processed_files_summary': processed_data
     }
 
 

@@ -143,10 +143,7 @@ class DownloadZipView(View):
             if not os.path.exists(zip_path):
                 raise Http404("Arquivo ZIP não encontrado no servidor.")
 
-            # Retorna o arquivo diretamente como FileResponse
-            response = FileResponse(open(zip_path, 'rb'), content_type='application/zip')
-            response['Content-Disposition'] = f'attachment; filename="{zip_filename}"'
-            return response
+            return FileResponse(open(zip_path, 'rb'), content_type='application/zip')
 
         except Exception as e:
             logger.error(f"Erro ao tentar baixar ZIP: {e}", exc_info=True)
