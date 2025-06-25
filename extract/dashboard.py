@@ -118,6 +118,36 @@ def call_django_backend(endpoint: str, method: str = "POST",
         st.error(f"Erro inesperado ao chamar o backend em '{endpoint}': {str(e)}")
         return None
 
+
+# --- Função Genérica de Comunicação com o Backend Django (para ZIPs) ---
+def call_django_backend_zip_bytes(endpoint: str, method: str = "GET") -> bytes | None:
+    url = f"{DJANGO_BACKEND_URL}{endpoint}"
+    headers = {}
+    st.sidebar.markdown(f"**Chamando:** `{method.upper()}` `{url}`")
+
+    try:
+        if method.upper() == "GET":
+            response = requests.get(url, headers=headers, timeout=120)
+        else:
+            st.error(f"Método HTTP '{method}' não suportado para download ZIP.")
+            return None
+
+        response.raise_for_status()
+        return response.content
+
+    except requests.exceptions.Timeout:
+        st.error(f"Tempo limite excedido para '{url}'.")
+        return None
+    except requests.exceptions.ConnectionError:
+        st.error(f"Erro de conexão ao '{url}'.")
+        return None
+    except requests.exceptions.HTTPError as e:
+        st.error(f"Erro HTTP ({e.response.status_code}) ao chamar '{endpoint}': {e.response.text[:500]}")
+        return None
+    except Exception as e:
+        st.error(f"Erro inesperado ao chamar '{endpoint}': {str(e)}")
+        return None
+
 # --- Função para Enviar XML para a API Externa (Via Backend Django) ---
 def send_xml_to_external_api(xml_content: str, file_name: str) -> dict:
     """
@@ -635,11 +665,8 @@ with tab2:
 
                                             # Se não baixou ainda este zip, baixa e armazena no session_state
                                             if zip_id and zip_id not in st.session_state['downloads_feitos']:
-                                                zip_bytes = call_django_backend(
-                                                    endpoint=f"/download-zip/{zip_id}/",
-                                                    method="GET",
-                                                    raw_bytes=True
-                                                )
+                                                zip_bytes = call_django_backend_zip_bytes(f"/download-zip/{zip_id}/")
+                                                    
                                                 if zip_bytes:
                                                     st.session_state['zip_download_ready'][zip_id] = {
                                                         "bytes": zip_bytes,
