@@ -346,9 +346,7 @@ class XMLGenerator:
     
     @classmethod
     def gerar_xml_abrasf(cls, dados: Dict) -> str:
-        for i in dados:
-            print(f"Dados recebidos para geração do XML: {json.dumps(dados, indent=4, ensure_ascii=False)}")
-            break
+        print(f"Dados recebidos para geração do XML: {json.dumps(dados, indent=4, ensure_ascii=False)}")
 
         # Criação dos elementos principais
         root = etree.Element("CompNfse", xmlns="http://www.abrasf.org.br/nfse.xsd")
@@ -362,18 +360,20 @@ class XMLGenerator:
 
 
         etree.SubElement(inf_nfse, "CodigoVerificacao").text = codigo_verificacao_clean
-        
         data_emissao = str(dados.get("dataEmissao", "")).replace(" às ", " ")
-        if not data_emissao.strip():
-            raise ValueError("Campo 'dataEmissao' está ausente ou vazio no JSON extraído.")
+        print(f"A data de emissão é: {data_emissao} 1")
 
         try:
             data_emissao_obj = parse(data_emissao, dayfirst=True)
             data_emissao_formatada = data_emissao_obj.strftime("%Y-%m-%dT%H:%M:%S")
+            print(f"Data de emissão formatada: {data_emissao_formatada}")
         except Exception as e:
-            raise ValueError(f"Erro ao converter a data de emissão '{data_emissao}': {e}")
+            data_emissao_formatada = ""
+            print(f"Erro ao converter a data de emissão: {data_emissao} -> {e}")
 
+        # Agora você pode usar a data formatada
         etree.SubElement(inf_nfse, "DataEmissao").text = data_emissao_formatada
+        print(f"A data de emissão é: {data_emissao_formatada} 2")
 
         # Valores da NFS-e
         valores_nfse = etree.SubElement(inf_nfse, "ValoresNfse")

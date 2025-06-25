@@ -18,57 +18,47 @@ logger = logging.getLogger(__name__)
 
 @shared_task(bind=True)
 def processar_pdfs(self, files_data):
-    """Processa múltiplos PDFs, gera XMLs e salva o ZIP no banco de dados."""
+    """Processa múltiplos PDFs, gera XMLs e retorna diretamente os XMLs."""
     processor = DocumentAIProcessor()
     project_id = os.getenv("PROJECT_ID")
     location = os.getenv("LOCATION")
     processor_id = os.getenv("PROCESSOR_ID")
 
-    logger.info(f"Iniciando processamento com project_id={project_id}, location={location}, processor_id={processor_id}")
-
-    if not project_id or not location or not processor_id:
-        raise ValueError("As variáveis de ambiente PROJECT_ID, LOCATION e PROCESSOR_ID devem estar definidas.")
+    if not all([project_id, location, processor_id]):
+        raise ValueError("Variáveis de ambiente não definidas.")
 
     if not isinstance(files_data, dict):
-        raise ValueError("files_data deve ser um dicionário com nomes de arquivos como chaves e bytes como valores.")
+        raise ValueError("files_data deve ser um dicionário.")
 
-    processed_data = {}
-    zip_buffer = io.BytesIO()
+    resultados = {}
+    for file_name, file_content in files_data.items():
+        try:
+            json_extraido = processor.processar_pdf(project_id, location, processor_id, file_content)
+            if not json_extraido:
+                raise ValueError("Nenhum conteúdo extraído.")
 
-    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
-        for file_name, file_content in files_data.items():
-            try:
-                base_name = os.path.splitext(file_name)[0]
-                xml_file_name = f"{base_name}.xml"
-                json_extraido = processor.processar_pdf(project_id, location, processor_id, file_content)
-                print(f"JSON extraído para {file_name}: {json.dumps(json_extraido, indent=2, ensure_ascii=False)}")
+            xml_str = XMLGenerator.gerar_xml_abrasf(json_extraido)
+            resultados[file_name] = {
+                "status": "ok",
+                "xml": xml_str
+            }
+        except Exception as e:
+            resultados[file_name] = {
+                "status": "erro",
+                "erro": str(e)
+            }
 
-                if json_extraido:
-                    try:
-                        # Aqui você converte o JSON extraído em XML de verdade
-                        xml_content = XMLGenerator.gerar_xml_abrasf(json_extraido)
-                        zipf.writestr(xml_file_name, xml_content)
-                        logger.info(f"XML gerado e adicionado ao ZIP para {file_name}.")
-                    except Exception as e:
-                        logger.error(f"Erro ao gerar XML para {file_name}: {e}", exc_info=True)
-                        processed_data[file_name] = f"Erro ao gerar XML: {e}"
-                        raise
+    return {"arquivos_resultado": resultados}
+    # zip_buffer.seek(0)
+    # zip_bytes = zip_buffer.read()
+    # zip_model = ArquivoZip.objects.create(zip_bytes=zip_bytes)
+    # if not zip_bytes.startswith(b'PK'):
+    #     logger.error("ZIP gerado é inválido!")
 
-                processed_data[file_name] = "Processado com sucesso"
-            except Exception as e:
-                logger.error(f"Erro ao processar o PDF {file_name}: {e}", exc_info=True)
-                processed_data[file_name] = f"Erro no processamento: {str(e)}"
-                raise  # re-lança para o Celery marcar como FAILED
-
-    zip_buffer.seek(0)
-    zip_bytes = zip_buffer.read()
-
-    zip_model = ArquivoZip.objects.create(zip_bytes=zip_bytes)
-
-    return {
-        'zip_id': str(zip_model.id),
-        'processed_files_summary': processed_data,
-    }
+    # return {
+    #     'zip_id': str(zip_model.id),
+    #     'processed_files_summary': processed_data,
+    # }
 
 
 @shared_task(bind=True)

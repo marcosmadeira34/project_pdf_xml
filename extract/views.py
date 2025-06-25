@@ -139,9 +139,9 @@ class DownloadZipView(View):
 
             return FileResponse(
                 BytesIO(zip_model.zip_bytes),
-                as_attachment=True,
+                content_type="application/zip",
                 filename=f"{task_id}.zip",
-                content_type="application/zip"
+                as_attachment=True,
             )
         except ArquivoZip.DoesNotExist:
             raise Http404("Arquivo ZIP não encontrado.")
