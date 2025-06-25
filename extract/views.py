@@ -126,28 +126,29 @@ class TaskStatusView(View):
 # --- View para Download de ZIP (API - mantida, mas não usada no fluxo principal agora) ---
 @method_decorator(csrf_exempt, name='dispatch')
 class DownloadZipView(View):
-    """Permite o download de um arquivo ZIP gerado por uma tarefa Celery.
-    Retorna os bytes do ZIP em base64 dentro de um JSON, não um arquivo direto.
-    """
-
     def get(self, request, task_id):
         try:
             task = AsyncResult(task_id)
             if task.successful():
                 result = task.result
-                zip_bytes_base64 = result.get('zip_bytes') # Espera um dicionário com 'zip_bytes'
-                if zip_bytes_base64:
-                    return JsonResponse({"zip_bytes": zip_bytes_base64}, status=200)
-                else:
-                    logger.warning(f"Tarefa {task_id} bem-sucedida, mas 'zip_bytes' não encontrado no resultado.")
-                    return JsonResponse({"error": "Dados ZIP não encontrados no resultado da tarefa."}, status=404)
+                zip_filename = result.get('zip_file_name')
+                if not zip_filename:
+                    return JsonResponse({"error": "ZIP não encontrado no resultado."}, status=404)
+
+                zip_path = f"/tmp/{zip_filename}"
+                if not os.path.exists(zip_path):
+                    raise Http404("Arquivo ZIP não encontrado no servidor.")
+
+                return FileResponse(
+                    open(zip_path, 'rb'),
+                    as_attachment=True,
+                    filename=zip_filename
+                )
             else:
-                status_msg = task.status
-                error_msg = str(task.info) if task.failed() else "Tarefa ainda não concluída."
-                return JsonResponse({"error": error_msg, "status": status_msg}, status=400)
+                return JsonResponse({"error": "Tarefa ainda não finalizada ou falhou."}, status=400)
         except Exception as e:
-            logger.error(f"Erro ao tentar baixar ZIP da tarefa {task_id}: {e}", exc_info=True)
-            return JsonResponse({"error": f"Erro interno ao processar download: {str(e)}"}, status=500)
+            logger.error(f"Erro ao tentar baixar ZIP: {e}", exc_info=True)
+            return JsonResponse({"error": "Erro ao processar download."}, status=500)
 
 
 # --- View para Juntar PDFs (API) ---

@@ -11,79 +11,62 @@ import base64
 import logging
 import PyPDF2
 import json
+import uuid
 
 logger = logging.getLogger(__name__)
 
 @shared_task(bind=True)
 def processar_pdfs(self, files_data):
-    """Processa múltiplos PDFs, gera XMLs e cria um ZIP."""
+    """Processa múltiplos PDFs, gera XMLs e cria um ZIP salvo em disco."""
     processor = DocumentAIProcessor()
     project_id = os.getenv("PROJECT_ID")
     location = os.getenv("LOCATION")
     processor_id = os.getenv("PROCESSOR_ID")
 
-    print(f"Iniciando processamento com project_id={project_id}, location={location}, processor_id={processor_id}")
-
-
+    logger.info(f"Iniciando processamento com project_id={project_id}, location={location}, processor_id={processor_id}")
 
     if not project_id or not location or not processor_id:
         raise ValueError("As variáveis de ambiente PROJECT_ID, LOCATION e PROCESSOR_ID devem estar definidas.")
 
-    # Verifica se files_data é um dicionário
     if not isinstance(files_data, dict):
         raise ValueError("files_data deve ser um dicionário com nomes de arquivos como chaves e bytes como valores.")
 
-
-
-    total_files = len(files_data)
-    processed_files = 0
-    erros = []  # Lista para armazenar arquivos que falharam
-
     processed_data = {}
-    extracted_xmls = {} # Para armazenar os XMLs individualmente
-
-    # Criar buffer para ZIP
+    extracted_xmls = {}
     zip_buffer = io.BytesIO()
 
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
         for file_name, file_content in files_data.items():
             try:
-                # Extrair o nome base do arquivo (sem extensão)
                 base_name = os.path.splitext(file_name)[0]
-                # Modifique o nome do arquivo para ter extensão .xml
                 xml_file_name = f"{base_name}.xml"
-
-                # Chame o método de processamento do seu DocumentAIProcessor,
-                # PASSANDO os parâmetros do Document AI AQUI.
-                # O seu método `processar_pdf` na classe `DocumentAIProcessor`
-                # DEVE ter a assinatura:
-                # `def processar_pdf(self, project_id, location, processor_id, pdf_bytes, file_name):`
                 xml_content = processor.processar_pdf(project_id, location, processor_id, file_content)
 
                 if xml_content:
-                    # Adiciona o XML ao dicionário de XMLs extraídos
                     extracted_xmls[xml_file_name] = xml_content
-                    # Adiciona o XML ao arquivo ZIP
                     zipf.writestr(xml_file_name, json.dumps(xml_content, ensure_ascii=False, indent=2))
                     logger.info(f"XML gerado e adicionado ao ZIP para {file_name}.")
                 else:
                     logger.warning(f"Nenhum XML gerado para {file_name}.")
 
-                processed_data[file_name] = "Processado com sucesso" # Ou dados mais detalhados
+                processed_data[file_name] = "Processado com sucesso"
             except Exception as e:
                 logger.error(f"Erro ao processar o PDF {file_name}: {e}", exc_info=True)
                 processed_data[file_name] = f"Erro no processamento: {str(e)}"
-                raise # Re-raise a exceção para que o Celery marque a tarefa como FAILED
+                raise  # Re-raise para Celery marcar como FAILED
 
-    # Obter os bytes do ZIP e codificá-los em base64
+    # Gerar nome único do ZIP e salvar em /tmp
     zip_buffer.seek(0)
-    zip_bytes_base64 = base64.b64encode(zip_buffer.read()).decode('utf-8')
+    zip_filename = f"{uuid.uuid4().hex}.zip"
+    zip_path = f"/tmp/{zip_filename}"
+    with open(zip_path, "wb") as f:
+        f.write(zip_buffer.read())
 
-    # Retorna o dicionário de XMLs e o ZIP em base64
+    # Retornar apenas o nome do ZIP
     return {
         'extracted_xmls': extracted_xmls,
-        'zip_bytes': zip_bytes_base64,
-        'processed_files_summary': processed_data
+        'processed_files_summary': processed_data,
+        'zip_file_name': zip_filename  # <-- usado depois no DownloadZipView
     }
 
 

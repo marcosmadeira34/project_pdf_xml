@@ -410,20 +410,16 @@ def get_celery_task_status(task_id: str):
 # --- FUNÇÃO PARA DOWNLOAD DO ZIP (se necessário) ---
 def get_zip_from_backend(task_id: str):
     """
-    Baixa o arquivo ZIP do backend para uma tarefa concluída.
+    Baixa o ZIP gerado diretamente do backend.
     Retorna os bytes do ZIP ou None em caso de erro.
     """
     download_url = f"{DJANGO_BACKEND_URL}/download-zip/{task_id}/"
     try:
         response = requests.get(download_url, timeout=60)
         response.raise_for_status()
-        # O Django retorna base64 do ZIP, então decodifique aqui
-        zip_base64 = response.json().get("zip_bytes")
-        if zip_base64:
-            return base64.b64decode(zip_base64)
-        return None
+        return response.content  # <-- agora retorna bytes direto
     except requests.exceptions.RequestException as e:
-        logger.error(f"Erro ao baixar ZIP para a tarefa {task_id}: {e}")
+        logger.error(f"Erro ao baixar ZIP: {e}")
         return None
 
 
@@ -622,16 +618,15 @@ with tab2:
                                             print(f"DEBUG - zip_bytes para task_id {task_id}:", zip_bytes
                                                   )
                                             if zip_bytes:
-                                                # Oferece o botão de download
-                                                st.success("Processamento concluído com sucesso!")
+                                                st.success("Processamento finalizado! Baixe o arquivo ZIP abaixo:")
                                                 st.download_button(
-                                                    label="📥 Baixar XMLs em ZIP",
-                                                    data=zip_bytes,
-                                                    file_name=f"notas_fiscais_{task_id}.zip",
+                                                    label="📥 Baixar ZIP",
+                                                    data=zip_data,
+                                                    file_name="notas_xml.zip",
                                                     mime="application/zip"
                                                 )
                                             else:
-                                                st.error("Erro ao baixar o arquivo ZIP do backend.")
+                                                st.error("Erro ao recuperar o arquivo ZIP do backend.")
 
                                             completed_count += processed_files_in_task
                                             if errored_files_in_task:
