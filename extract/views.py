@@ -130,7 +130,7 @@ class TaskStatusView(View):
 class DownloadZipView(View):
     def get(self, request, task_id):  # <- Adicione o task_id aqui
         try:
-            zip_model = ArquivoZip.objects.get(task_id=task_id)
+            zip_model = ArquivoZip.objects.get(id=task_id)
             response = FileResponse(zip_model.arquivo.open("rb"), content_type="application/zip")
             response['Content-Disposition'] = f'attachment; filename="{zip_model.arquivo.name.split("/")[-1]}"'
             return response
