@@ -50,7 +50,10 @@ XML_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # --- Função Genérica de Comunicação com o Backend Django ---
-def call_django_backend(endpoint: str, method: str = "POST", files_data: dict = None, json_data: dict = None) -> dict:
+def call_django_backend(endpoint: str, method: str = "POST", 
+                        files_data: dict = None, 
+                        json_data: dict = None,
+                        raw_bytes: bool = False) -> dict:
     """
     Função genérica para fazer requisições HTTP para o backend Django.
     Exibe mensagens de depuração na sidebar.
@@ -688,7 +691,8 @@ with tab2:
                                         if task_status_final and task_status_final.get("state") == "SUCCESS":
                                             zip_response = call_django_backend(
                                                 endpoint=f"/download-zip/{task_id}/", # ENDPOINT REAL NO SEU DJANGO para download do ZIP
-                                                method="GET"
+                                                method="GET",
+                                                raw_bytes=True
                                             )
                                             if zip_response and hasattr(zip_response, 'content'): # Verifica se é um objeto response com conteúdo
                                                 zip_bytes = zip_response.content
