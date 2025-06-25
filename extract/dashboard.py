@@ -630,14 +630,15 @@ with tab2:
                                                     raw_bytes=True
                                                 )
                                                 if zip_bytes:
-                                                    # Salva no session_state para exibir depois do loop
+                                                    # Salva os dados no session_state para renderizar depois do loop
                                                     st.session_state['zip_download_ready'] = {
                                                         "bytes": zip_bytes,
-                                                        "file_name": meta.get("zip_file_name", "resultado.zip")
+                                                        "file_name": meta.get("zip_file_name", "resultado.zip"),
+                                                        "zip_id": zip_id
                                                     }
+                                                    st.session_state['downloads_feitos'].add(zip_id)
                                                 else:
-                                                    st.error(f"Falha ao baixar o ZIP para a tarefa {task_id}.")
-
+                                                    st.error(f"Falha ao baixar o ZIP da tarefa {task_id}.")
                                             elif not zip_id:
                                                 st.error("O backend não retornou o ID do arquivo ZIP.")
 
@@ -666,7 +667,7 @@ with tab2:
 
                                         elif state in ["FAILURE", "UNKNOWN"]:
                                             for file_name, original_idx in original_indices_map.items():
-                                                if not st.session_state.uploaded_files_info[original_idx]["Status"] == "Concluído":
+                                                if st.session_state.uploaded_files_info[original_idx]["Status"] != "Concluído":
                                                     st.session_state.uploaded_files_info[original_idx]["Status"] = "Erro"
                                                     st.session_state.uploaded_files_info[original_idx]["Detalhes"] = f"Falha na tarefa Celery: {meta.get('error', 'Erro desconhecido')}"
                                                     st.session_state.uploaded_files_info[original_idx]["XML Gerado"] = "Não"
@@ -681,9 +682,9 @@ with tab2:
 
                                 progress_bar.empty()
 
-                                # Renderiza o botão de download apenas após o fim do loop
-                                if 'zip_download_ready' in st.session_state:
-                                    zip_info = st.session_state['zip_download_ready']
+                                # Renderiza o botão de download após o loop, se o ZIP foi salvo no session_state
+                                if "zip_download_ready" in st.session_state and "bytes" in st.session_state["zip_download_ready"]:
+                                    zip_info = st.session_state["zip_download_ready"]
                                     st.download_button(
                                         label="📥 Baixar XMLs em ZIP",
                                         data=zip_info["bytes"],
@@ -691,11 +692,8 @@ with tab2:
                                         mime="application/zip",
                                         key=f"download_btn_{zip_info['zip_id']}"
                                     )
-                                    # Remove após renderizar, se quiser evitar múltiplos cliques:
-                                    # del st.session_state['zip_download_ready']
-
                                 else:
-                                    st.rerun() # Reruns para atualizar o DataFrame
+                                    st.rerun() 
 
         st.subheader("Status dos PDFs Carregados:")
         st.dataframe(df_files[['Nome do Arquivo', 'Status', 'XML Gerado', 'Status Envio']], use_container_width=True)
