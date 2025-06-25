@@ -128,13 +128,14 @@ class TaskStatusView(View):
 # --- View para Download de ZIP (API - mantida, mas não usada no fluxo principal agora) ---
 @method_decorator(csrf_exempt, name='dispatch')
 class DownloadZipView(View):
-    def get(self, request, zip_id):
+    def get(self, request, task_id):  # <- Adicione o task_id aqui
         try:
-            zip_file = ArquivoZip.objects.get(id=zip_id)
-            response = FileResponse(zip_file.arquivo, as_attachment=True, filename='resultado.zip')
+            zip_model = ArquivoZip.objects.get(task_id=task_id)
+            response = FileResponse(zip_model.arquivo.open("rb"), content_type="application/zip")
+            response['Content-Disposition'] = f'attachment; filename="{zip_model.arquivo.name.split("/")[-1]}"'
             return response
         except ArquivoZip.DoesNotExist:
-            raise Http404("Arquivo ZIP não encontrado.")
+            raise Http404("Arquivo ZIP não encontrado no servidor.")
 
 
 # --- View para Juntar PDFs (API) ---
