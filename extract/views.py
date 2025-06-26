@@ -59,7 +59,8 @@ class StreamlitAppRedirectView(View):
     """Redireciona o usuário para o URL da aplicação Streamlit."""
 
     def get(self, request):
-        streamlit_app_url = os.getenv("STREAMLIT_APP_URL", "http://127.0.0.1:8501")
+        # streamlit_app_url = os.getenv("STREAMLIT_APP_URL", "http://127.0.0.1:8501")
+        streamlit_app_url = "http://localhost:8501"
         if not streamlit_app_url:
             # Em um ambiente de produção, logue isso, mas evite expor detalhes sensíveis
             logger.error("STREAMLIT_APP_URL não configurada nas variáveis de ambiente.")
@@ -114,6 +115,7 @@ class TaskStatusView(View):
 
             if result.status == "SUCCESS":
                 response_data["meta"] = result.result
+                logger.info(f"[Celery Status] Resultado retornado: {result.result}")
 
             elif result.status == "FAILURE":
                 response_data["meta"] = {"error": str(result.result)}

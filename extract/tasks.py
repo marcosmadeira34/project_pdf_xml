@@ -16,49 +16,77 @@ from .models import ArquivoZip
 
 logger = logging.getLogger(__name__)
 
+
+
+def salvar_zip_no_banco(zip_bytes):
+    zip_obj = ArquivoZip.objects.create(
+        id=uuid.uuid4(),  # se o campo 'id' é UUIDField com primary_key
+        zip_bytes=zip_bytes
+    )
+    return str(zip_obj.id) 
+
+
 @shared_task(bind=True)
 def processar_pdfs(self, files_data):
-    """Processa múltiplos PDFs, gera XMLs e retorna diretamente os XMLs."""
+    """Processa múltiplos PDFs, gera XMLs válidos e retorna resultados compatíveis com frontend."""
+    from django.core.files.base import ContentFile
+    from django.core.files.storage import default_storage
+
     processor = DocumentAIProcessor()
     project_id = os.getenv("PROJECT_ID")
     location = os.getenv("LOCATION")
     processor_id = os.getenv("PROCESSOR_ID")
 
-    if not all([project_id, location, processor_id]):
-        raise ValueError("Variáveis de ambiente não definidas.")
+    total_files = len(files_data)
+    processed_files = 0
+    arquivos_resultado = {}
+    erros = []
 
-    if not isinstance(files_data, dict):
-        raise ValueError("files_data deve ser um dicionário.")
+    zip_buffer = io.BytesIO()
 
-    resultados = {}
-    for file_name, file_content in files_data.items():
-        try:
-            json_extraido = processor.processar_pdf(project_id, location, processor_id, file_content)
-            if not json_extraido:
-                raise ValueError("Nenhum conteúdo extraído.")
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+        for file_name, pdf_bytes in files_data.items():
+            try:
+                # Processa com DocumentAI
+                document_json = processor.processar_pdf(project_id, location, processor_id, pdf_bytes)
 
-            xml_str = XMLGenerator.gerar_xml_abrasf(json_extraido)
-            resultados[file_name] = {
-                "status": "ok",
-                "xml": xml_str
-            }
-        except Exception as e:
-            resultados[file_name] = {
-                "status": "erro",
-                "erro": str(e)
-            }
+                # Mapeia campos e converte para XML válido
+                dados_extraidos = processor.mapear_campos(document_json)
+                xml_str = XMLGenerator.gerar_xml_abrasf(dados_extraidos)
 
-    return {"arquivos_resultado": resultados}
-    # zip_buffer.seek(0)
-    # zip_bytes = zip_buffer.read()
-    # zip_model = ArquivoZip.objects.create(zip_bytes=zip_bytes)
-    # if not zip_bytes.startswith(b'PK'):
-    #     logger.error("ZIP gerado é inválido!")
+                # Adiciona ao ZIP
+                xml_filename = os.path.splitext(file_name)[0] + ".xml"
+                zip_file.writestr(xml_filename, xml_str)
 
-    # return {
-    #     'zip_id': str(zip_model.id),
-    #     'processed_files_summary': processed_data,
-    # }
+                # Marca como sucesso
+                arquivos_resultado[file_name] = {
+                    "status": "ok",
+                    "xml": xml_str
+                }
+
+                processed_files += 1
+                self.update_state(state="PROGRESS", meta={"processed": processed_files, "total": total_files})
+
+            except Exception as e:
+                # Marca como erro
+                arquivos_resultado[file_name] = {
+                    "status": "erro",
+                    "erro": str(e)
+                }
+                erros.append(file_name)
+                continue
+
+    # Salva o ZIP no sistema de arquivos
+    zip_buffer.seek(0)
+    zip_bytes = zip_buffer.read()
+    zip_id = salvar_zip_no_banco(zip_bytes)
+
+    return {
+        "arquivos_resultado": arquivos_resultado,
+        "zip_id": zip_id,
+        "processed": processed_files,
+        "erros": erros
+    }
 
 
 @shared_task(bind=True)
