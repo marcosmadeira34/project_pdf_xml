@@ -746,7 +746,7 @@ with tab2:
                 unsafe_allow_html=True
             )
                                 
-       
+            
         
         pdfs_ready = [info for info in st.session_state.uploaded_files_info if Path(info["Caminho"]).exists()]
         if pdfs_ready:
@@ -771,15 +771,7 @@ with tab2:
                     st.info(f"Status: {selected_pdf_info['Status']}")
                     st.info(f"XML Gerado: {selected_pdf_info['XML Gerado']}")
                     st.info(f"Detalhes: {selected_pdf_info['Detalhes']}")
-                    # Para mostrar o XML, você precisaria salvá-lo após o download do ZIP
-                    # Exemplo:
-                    # if selected_pdf_info["XML Gerado"] == "Sim":
-                    #    xml_file_path_local = XML_DIR / Path(selected_pdf_name).with_suffix(".xml").name
-                    #    if xml_file_path_local.exists():
-                    #        with open(xml_file_path_local, "r", encoding="utf-8") as f:
-                    #            st.code(f.read(), language="xml")
-                    #    else:
-                    #        st.warning("XML não disponível localmente. Baixe o ZIP para ver.")
+                    
 
         else:
             st.info("Nenhum PDF disponível para visualização.")
