@@ -393,7 +393,7 @@ class XMLGenerator:
             aliquota_float = float(aliquota_formatada)
             print(f"Alíquota formatada linha 394: {aliquota_float}")
         else:
-            raise ValueError(f"Valor inválido para alíquota: {aliquota}")
+            aliquota_float = 0.0
 
         etree.SubElement(valores_nfse, "Aliquota").text = str(aliquota_float)
 
@@ -531,7 +531,8 @@ class XMLGenerator:
             aliquota_servico_float = float(aliquota_servico_formatada)
             print(f"Alíquota formatada linha 532: {aliquota_servico_float}")
         else:
-            raise ValueError(f"Valor inválido para alíquota: {aliquota_servico}")
+            aliquota_servico_float = 0.00
+            #raise ValueError(f"Valor inválido para alíquota: {aliquota_servico}")
         etree.SubElement(valores_servico, "Aliquota").text = str(aliquota_servico_float)    
 
         # IssRetido
