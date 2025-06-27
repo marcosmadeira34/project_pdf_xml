@@ -14,6 +14,7 @@ from dateutil.parser import parse
 import logging
 import cidades_ibge 
 import unicodedata
+from difflib import get_close_matches
 
 
 
@@ -333,14 +334,41 @@ class XMLGenerator:
             texto = re.sub(r'[^a-zA-Z0-9\s]', '', texto)
             return texto.upper().strip()
 
-        chave = f"{normalizar(nome_municipio)}-{uf.upper()}"
-        codigo = cidades_ibge.CIDADES_IBGE.get(chave)
+        # Normaliza
+        nome_normalizado = normalizar(nome_municipio)
+        uf_normalizado = normalizar(uf)
 
-        if not codigo:
-            logger.warning(f"[CodigoMunicipio] Município '{nome_municipio}-{uf}' não encontrado na base IBGE.")
-            return ""
+        chave_exata = f"{nome_normalizado}-{uf_normalizado}"
 
-        return codigo 
+        # Busca exata
+        if chave_exata in cidades_ibge.CIDADES_IBGE:
+            return cidades_ibge.CIDADES_IBGE[chave_exata]
+
+        # Busca parcial
+        for chave, codigo in cidades_ibge.CIDADES_IBGE.items():
+            try:
+                nome_dicionario, uf_dicionario = chave.split("-")
+            except ValueError:
+                continue
+
+            if nome_dicionario == nome_normalizado and uf_dicionario == uf_normalizado:
+                return codigo
+
+        for chave, codigo in cidades_ibge.CIDADES_IBGE.items():
+            if nome_normalizado in chave and f"-{uf_normalizado}" in chave:
+                logger.warning(f"[CodigoMunicipio] Correspondência parcial encontrada: '{chave}' para '{nome_municipio}-{uf}'")
+                return codigo
+
+        # Sugestão por similaridade
+        chaves_possiveis = list(cidades_ibge.CIDADES_IBGE.keys())
+        similares = get_close_matches(chave_exata, chaves_possiveis, n=1, cutoff=0.85)
+        if similares:
+            sugestao = similares[0]
+            logger.warning(f"[CodigoMunicipio] Sugestão de chave similar encontrada: '{sugestao}' para '{chave_exata}'")
+            return cidades_ibge.CIDADES_IBGE[sugestao]
+
+        logger.warning(f"[CodigoMunicipio] Município '{nome_municipio}-{uf}' não encontrado na base IBGE.")
+        return ""
     
     
     
