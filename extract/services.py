@@ -544,32 +544,32 @@ class XMLGenerator:
         # ValorServicos
         valor_servicos = cls.validar_dados_criticos(dados, "valorServicos")
         if valor_servicos is None:
-            valor_servicos = "0.00"  # Define um valor padrão se não for encontrado
-            etree.SubElement(valores_servico, "ValorServicos").text = valor_servicos
+            valor_servicos_none = "0.00"  # Define um valor padrão se não for encontrado
+            etree.SubElement(valores_servico, "ValorServicos").text = valor_servicos_none
         else:
             etree.SubElement(valores_servico, "ValorServicos").text = valor_servicos        
 
         # ValorDeducoes
         valor_deducoes = cls.validar_dados_criticos(dados, "deducoes")
         if valor_deducoes is None:
-            valor_deducoes = "0.00"
-            etree.SubElement(valores_servico, "ValorDeducoes").text = valor_deducoes
+            valor_deducoes_none = "0.00"
+            etree.SubElement(valores_servico, "ValorDeducoes").text = valor_deducoes_none
         else:
             etree.SubElement(valores_servico, "ValorDeducoes").text = valor_deducoes       
         
         # ValorIr
         valor_ir = cls.validar_dados_criticos(dados, "impostoRenda")
         if valor_ir is None:
-            valor_ir = "0.00"  # Define um valor padrão se não for encontrado        
-            etree.SubElement(valores_servico, "ValorIr").text = valor_ir
+            valor_ir_none = "0.00"  # Define um valor padrão se não for encontrado        
+            etree.SubElement(valores_servico, "ValorIr").text = valor_ir_none
         else:
             etree.SubElement(valores_servico, "ValorIr").text = valor_ir
 
         # ValorIss
         valor_iss_servico = cls.validar_dados_criticos(dados, "valorIss")
         if valor_iss_servico is None:
-            valor_iss_servico = "0.00"  # Define um valor padrão se não for encontrado        
-            etree.SubElement(valores_servico, "ValorIss").text = valor_iss_servico
+            valor_iss_servico_none = "0.00"  # Define um valor padrão se não for encontrado        
+            etree.SubElement(valores_servico, "ValorIss").text = valor_iss_servico_none
         else:
             etree.SubElement(valores_servico, "ValorIss").text = valor_iss_servico
 
