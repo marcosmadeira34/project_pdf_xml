@@ -432,7 +432,7 @@ class XMLGenerator:
 
         etree.SubElement(valores_nfse, "Aliquota").text = str(aliquota_float)
 
-        valor_iss = str(dados.get("valorIss", "0.00"))
+        valor_iss = str(dados.get("valorIss", "0,00"))
         # Remove o ponto de milhar e substitui a vírgula por ponto
         valor_iss_formatado = valor_iss.replace('.', '').replace(',', '.')
         etree.SubElement(valores_nfse, "ValorIss").text = valor_iss_formatado
