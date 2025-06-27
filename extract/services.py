@@ -318,6 +318,9 @@ class XMLGenerator:
         Busca o código IBGE com base no nome e UF, usando o dicionário carregado no settings.
         Funciona mesmo que nome_municipio ou uf venham como lista (acidentalmente).
         """
+        print(f"[DEBUG] municipioPrestador bruto: {nome_municipio}")
+        print(f"[DEBUG] ufPrestador bruto: {uf}")
+        
         # Corrige se os campos vierem como listas (por exemplo: ["PARNAMIRIM"])
         if isinstance(nome_municipio, list):
             nome_municipio = nome_municipio[0] if nome_municipio else ""
@@ -339,6 +342,10 @@ class XMLGenerator:
         uf_normalizado = normalizar(uf)
 
         chave_exata = f"{nome_normalizado}-{uf_normalizado}"
+
+        print(f"[DEBUG] municipioPrestador normalizado: {nome_normalizado}")
+        print(f"[DEBUG] ufPrestador normalizado: {uf_normalizado}")
+        print(f"[DEBUG] chave_exata formada: {chave_exata}")
 
         # Busca exata
         if chave_exata in cidades_ibge.CIDADES_IBGE:
