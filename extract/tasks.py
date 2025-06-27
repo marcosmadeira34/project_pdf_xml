@@ -49,9 +49,12 @@ def processar_pdfs(self, files_data):
             try:
                 # Processa com DocumentAI
                 document_json = processor.processar_pdf(project_id, location, processor_id, pdf_bytes)
+                print(f"Documento processado: {file_name}")
 
                 # Mapeia campos e converte para XML válido
                 dados_extraidos = processor.mapear_campos(document_json)
+                print(f"Dados extraídos: {dados_extraidos}")
+
                 xml_str = XMLGenerator.gerar_xml_abrasf(dados_extraidos)
 
                 # Adiciona ao ZIP
