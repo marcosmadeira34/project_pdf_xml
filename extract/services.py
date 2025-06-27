@@ -15,6 +15,7 @@ import logging
 import cidades_ibge 
 import unicodedata
 from difflib import get_close_matches
+from decimal import Decimal, InvalidOperation
 
 
 
@@ -480,8 +481,8 @@ class XMLGenerator:
         
         etree.SubElement(endereco_prestador, "CodigoPais").text = str(dados.get("codigoPais", "1058"))
         cep_prestador = dados.get("cepPrestador", "")
-        # Remove caracteres não numéricos
-        cep_prestador_clean = re.sub(r'\D', '', cep_prestador)
+        # Remove caracteres não numéricos do CEP (ex: 68825-001 -> 68825001)
+        cep_prestador_clean = re.sub(r'[^0-9]', '', cep_prestador)
         etree.SubElement(endereco_prestador, "Cep").text = cep_prestador_clean
 
         # Contato do prestador
@@ -698,18 +699,26 @@ class XMLGenerator:
         email_tomador.text = dados.get("emailTomador", "")
 
 
-        valor_liquido_nfse = str(dados.get("valorLiquido", "")).replace('.', '').replace(',', '.')
-        # Verifica se o valor é numérico e formata corretamente
-        if not valor_liquido_nfse:
+        valor_liquido_str = dados.get("valorLiquido", "").replace(',', '.').strip()
+
+        try:
+            valor_liquido_nfse = "{:.2f}".format(Decimal(valor_liquido_str))
+        except (InvalidOperation, ValueError):
             try:
-                valor_liquido_calc = float(valor_servicos) - float(valor_iss_servico) \
-                    - float(valor_ir)
+                valor_servicos_dec = Decimal(dados.get("valorServicos", "0").replace(',', '.'))
+                valor_iss_dec = Decimal(dados.get("valorIss", "0").replace(',', '.'))
+                valor_ir_dec = Decimal(dados.get("valorIr", "0").replace(',', '.'))
+
+                valor_liquido_calc = valor_servicos_dec - valor_iss_dec - valor_ir_dec
                 valor_liquido_nfse = "{:.2f}".format(valor_liquido_calc)
                 print(f"Valor líquido calculado: {valor_liquido_nfse}")
-            except (ValueError, TypeError) as e:
+            except (InvalidOperation, ValueError, TypeError) as e:
                 valor_liquido_nfse = "0.00"
-                logger.error(f"Erro ao calcular o valor líquido: {e}. Usando valor padrão 0.00.\
-                             Nota número: {dados.get('numero-nota-fiscal', '')}")
+                logger.error(
+                    f"Erro ao calcular o valor líquido: {e}. Usando valor padrão 0.00. "
+                    f"Nota número: {dados.get('numero-nota-fiscal', '')}"
+                )
+
         etree.SubElement(valores_nfse, "ValorLiquidoNfse").text = valor_liquido_nfse
 
         # Gerando o XML em formato string
