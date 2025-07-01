@@ -13,7 +13,9 @@ import base64
 import requests
 import io
 import zipfile
-import uuid
+
+# --- Importações do sistema de autenticação ---
+from streamlit_auth import StreamlitAuthManager, require_auth, show_login_page
 
 # --- Suas importações existentes ---
 #from services import XMLGenerator
@@ -38,6 +40,15 @@ st.set_page_config(
     layout="wide"
 )
 
+# --- Inicialização do Sistema de Autenticação ---
+StreamlitAuthManager.initialize_session_state()
+
+# Verifica autenticação antes de mostrar qualquer conteúdo
+if not StreamlitAuthManager.ensure_authenticated():
+    show_login_page()
+    st.stop()  # Para a execução aqui se não estiver autenticado
+
+# Se chegou até aqui, o usuário está autenticado
 st.title("Sistema de Automação para Notas Fiscais de Serviço")
 st.markdown("Automatize a extração inteligente de dados de NFS-e em PDF utilizando IA e integre diretamente com seu sistema Domínio via API de forma segura e eficiente.")
 
@@ -58,7 +69,7 @@ def call_django_backend(endpoint: str, method: str = "POST",
                         json_data: dict = None,
                         raw_bytes: bool = False) -> dict:
     """
-    Função genérica para fazer requisições HTTP para o backend Django.
+    Função genérica para fazer requisições HTTP autenticadas para o backend Django.
     Exibe mensagens de depuração na sidebar.
     :param endpoint: O caminho da URL no backend (ex: "/upload-e-processar-pdf/").
     :param method: O método HTTP ("POST" ou "GET").
@@ -67,8 +78,13 @@ def call_django_backend(endpoint: str, method: str = "POST",
     :param json_data: Dicionário de dados JSON para enviar (para POST com JSON).
     :return: A resposta JSON do backend ou None em caso de erro.
     """
+    # Verifica se está autenticado
+    if not StreamlitAuthManager.ensure_authenticated():
+        st.error("Sessão expirada. Por favor, faça login novamente.")
+        return None
+    
     url = f"{DJANGO_BACKEND_URL}{endpoint}"
-    headers = {}
+    headers = StreamlitAuthManager.get_auth_headers()
 
     #st.sidebar.markdown(f"**Chamando:** `{method.upper()}` `{url}`")
 
@@ -108,6 +124,12 @@ def call_django_backend(endpoint: str, method: str = "POST",
         st.error(f"Não foi possível conectar ao backend Django em '{url}'. Verifique o URL ou se o servidor está online.")
         return None
     except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 401:
+            st.error("Sessão expirada. Por favor, faça login novamente.")
+            StreamlitAuthManager.logout()
+            st.rerun()
+            return None
+        
         error_detail = ""
         try:
             error_data = e.response.json()
@@ -520,20 +542,14 @@ with tab1:
             help="Você pode enviar um ou vários arquivos de uma vez.",
             key="pdf_uploader"
         )
-        if 'uploaded_files_info' not in st.session_state:
-            st.session_state.uploaded_files_info = []
 
         if uploaded_files:
+            new_uploads_count = 0
             for f in uploaded_files:
-                unique_name = f"{Path(f.name).stem}_{uuid.uuid4().hex[:8]}.pdf"
-                file_path = UPLOAD_DIR / unique_name
-
-                # Verifica se o caminho já está na session_state
-                caminhos_existentes = [info["Caminho"] for info in st.session_state.uploaded_files_info]
-                if str(file_path) not in caminhos_existentes:
+                file_path = UPLOAD_DIR / f.name
+                if not file_path.exists():
                     with open(file_path, "wb") as out:
                         out.write(f.read())
-
                     st.session_state.uploaded_files_info.append({
                         "Nome do Arquivo": f.name,
                         "Caminho": str(file_path),
@@ -541,10 +557,11 @@ with tab1:
                         "XML Gerado": "-",
                         "Status Envio": "-",
                         "Detalhes": ""
-            })
+                    })
+                    new_uploads_count += 1
                 
-            # if new_uploads_count > 0:
-            #     st.success(f"{new_uploads_count} arquivo(s) novo(s) salvo(s) com sucesso!")
+            if new_uploads_count > 0:
+                st.success(f"{new_uploads_count} arquivo(s) novo(s) salvo(s) com sucesso!")
 
 # --- TAB 2: Revisar & Converter ---
 with tab2:

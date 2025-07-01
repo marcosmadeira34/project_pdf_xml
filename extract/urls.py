@@ -9,6 +9,13 @@ from .views import (
     StreamlitAppRedirectView,
     SendXMLToExternalAPIView,
 )
+from .auth_views import (
+    AuthLoginView,
+    AuthRefreshView,
+    AuthVerifyView,
+    AuthLogoutView,
+    AuthUserInfoView,
+)
 
 
 urlpatterns = [
@@ -20,4 +27,11 @@ urlpatterns = [
      path("download-zip/<uuid:task_id>/", DownloadZipView.as_view(), name="download-zip"),
     path("streamlit-dashboard/", StreamlitAppRedirectView.as_view(), name="streamlit-dashboard"),
     path("send-xml-to-external-api/", SendXMLToExternalAPIView.as_view(), name="send-xml-to-external-api"),
+    
+    # Endpoints de autenticação JWT
+    path("auth/login/", AuthLoginView.as_view(), name="auth-login"),
+    path("auth/refresh/", AuthRefreshView.as_view(), name="auth-refresh"),
+    path("auth/verify/", AuthVerifyView.as_view(), name="auth-verify"),
+    path("auth/logout/", AuthLogoutView.as_view(), name="auth-logout"),
+    path("auth/user-info/", AuthUserInfoView.as_view(), name="auth-user-info"),
 ]

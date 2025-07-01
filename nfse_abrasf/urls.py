@@ -22,7 +22,7 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('jet/', include('jet.urls', 'jet')),  # Django JET URLS
     path('admin/', admin.site.urls),
-    path('', include('extract.urls'))
+    path('', include('extract.urls'))  # Remove o '/' extra
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
