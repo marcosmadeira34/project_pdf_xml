@@ -5,6 +5,7 @@ import logging
 import os
 import requests
 import base64 # Importe base64 para lidar com o ZIP
+import uuid  # Adicionar import do uuid
 from celery.result import AsyncResult
 from django.contrib import messages
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
@@ -17,11 +18,11 @@ from django.http import FileResponse, Http404
 from .models import ArquivoZip
 from django.http import FileResponse, Http404
 from io import BytesIO
-
+from .models import ArquivoZip, UserCredits
 # Importa as classes e funções do seu processador e tarefas Celery
 # Certifique-se de que esses imports estão corretos para o seu projeto
 from extract.services import DocumentAIProcessor
-from extract.tasks import processar_pdfs, merge_pdfs_task
+from extract.tasks import processar_pdfs, merge_pdfs_task  # Removido processar_pdf_com_ai
 
 logger = logging.getLogger(__name__)
 
@@ -70,41 +71,129 @@ class StreamlitAppRedirectView(View):
 # --- View para Upload e Processamento de PDF (API) ---
 @method_decorator(csrf_exempt, name='dispatch')
 class UploadEProcessarPDFView(View):
-    """Recebe PDFs do frontend, inicia o processamento assíncrono via Celery."""
-
     def post(self, request):
-        files = request.FILES.getlist("files")
-
-        if not files:
-            return JsonResponse({"error": "Nenhum arquivo enviado"}, status=400)
-
-        files_data = {pdf.name: pdf.read() for pdf in files}
-
         try:
-            processor = DocumentAIProcessor()
-            max_lotes = 10
-            lotes = processor.dividir_em_lotes(files_data, tamanho_lote=20)
-
-            if len(lotes) > max_lotes:
-                return JsonResponse({"error": "Excesso de arquivos enviados. Tente novamente com menos arquivos."}, status=400)
-
-            task_ids = []
-            for lote in lotes:
-                task = processar_pdfs.delay(lote) # Inicia a tarefa Celery
-                task_ids.append(task.id)
-                print(f"O retorno da tarefa é: {task.id}")
+            # Debug log para verificar o usuário
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"UploadEProcessarPDFView - request.user: {request.user}")
+            logger.info(f"UploadEProcessarPDFView - request.user.id: {getattr(request.user, 'id', 'No ID')}")
+            logger.info(f"UploadEProcessarPDFView - is_authenticated: {request.user.is_authenticated}")
             
-            return JsonResponse({"task_ids": task_ids, "message": "Processamento iniciado!"})
+            # Verifica se o usuário está autenticado
+            if not request.user.is_authenticated:
+                return JsonResponse({
+                    'error': 'Usuário não autenticado',
+                    'message': 'Faça login para continuar'
+                }, status=401)
+            
+            # Verifica se o usuário tem créditos suficientes ANTES de processar
+            user_credits, created = UserCredits.objects.get_or_create(user=request.user)
+            
+            # Conta quantos arquivos serão processados
+            files = request.FILES.getlist('files[]')
+            required_credits = len(files)
+            
+            logger.info(f"Files received: {len(files)}")
+            logger.info(f"Required credits: {required_credits}")
+            logger.info(f"User credits: {user_credits.balance}")
+            
+            if not user_credits.has_credits(required_credits):
+                return JsonResponse({
+                    'error': 'Créditos insuficientes',
+                    'message': f'Você precisa de {required_credits} crédito(s) para processar {len(files)} arquivo(s)',
+                    'current_balance': user_credits.balance,
+                    'required_credits': required_credits
+                }, status=402)  # 402 Payment Required
+            
+            # CONSOME OS CRÉDITOS ANTES DE PROCESSAR
+            success = user_credits.use_credits(
+                required_credits, 
+                f"Conversão de {required_credits} PDF(s)"
+            )
+            
+            if not success:
+                return JsonResponse({
+                    'error': 'Erro ao consumir créditos',
+                    'message': 'Houve um erro ao descontar os créditos'
+                }, status=500)
+            
+            logger.info(f"Credits consumed successfully. New balance: {user_credits.balance}")
+            
+            # Agora processa os arquivos
+            merge_id = uuid.uuid4()
+            
+            # Verifica se deve fazer merge
+            merge_pdfs_param = request.POST.get('merge_pdfs', 'false').lower() == 'true'
+            
+            if merge_pdfs_param and len(files) > 1:
+                # Para merge, prepara os dados no formato esperado
+                files_dict = {}
+                for file in files:
+                    files_dict[file.name] = file.read()
+                
+                merge_task = merge_pdfs_task.delay(files_dict, str(merge_id))
+                
+                return JsonResponse({
+                    'success': True,
+                    'task_id': merge_task.id,
+                    'merge_id': str(merge_id),
+                    'message': f'Créditos consumidos: {required_credits}. Processamento iniciado!',
+                    'files_count': len(files),
+                    'credits_used': required_credits,
+                    'remaining_credits': user_credits.balance
+                })
+            else:
+                # Para processar individualmente, vamos criar uma única tarefa com todos os arquivos
+                # A função processar_pdfs espera um dicionário {nome_arquivo: bytes}
+                files_dict = {}
+                for file in files:
+                    files_dict[file.name] = file.read()
+                
+                logger.info(f"Files dictionary created with {len(files_dict)} files")
+                
+                # Chama a tarefa com o dicionário de arquivos
+                task = processar_pdfs.delay(files_dict)
+                
+                return JsonResponse({
+                    'success': True,
+                    'task_id': task.id,  # Retorna um único task_id
+                    'merge_id': str(merge_id),
+                    'message': f'Créditos consumidos: {required_credits}. Processamento iniciado!',
+                    'files_count': len(files),
+                    'credits_used': required_credits,
+                    'remaining_credits': user_credits.balance
+                })
+                
         except Exception as e:
-            logger.error(f"Erro ao iniciar o processamento de PDF: {e}", exc_info=True)
-            return JsonResponse({"error": f"Erro interno ao iniciar o processamento: {str(e)}"}, status=500)
+            # Log detalhado do erro
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f'Erro em UploadEProcessarPDFView: {str(e)}', exc_info=True)
+            
+            # Se houver erro APÓS consumir créditos, reembolsa
+            try:
+                if 'required_credits' in locals() and 'success' in locals() and success:
+                    # Reembolsa os créditos
+                    user_credits.add_credits(
+                        required_credits,
+                        f"Reembolso - Erro no processamento: {str(e)}"
+                    )
+                    logger.info(f"Credits refunded: {required_credits}")
+            except Exception as refund_error:
+                logger.error(f"Error during refund: {str(refund_error)}")
+                pass  # Evita erro duplo
+            
+            return JsonResponse({
+                'error': f'Erro no processamento: {str(e)}',
+                'message': 'Créditos reembolsados devido ao erro'
+            }, status=500)
 
 # --- View para Verificar o Status da Tarefa Celery (API) ---
 @method_decorator(csrf_exempt, name='dispatch')
 class TaskStatusView(View):
     """
     Verifica o status de uma tarefa Celery e retorna o resultado se concluída.
-    Se a tarefa for bem-sucedida, retorna os XMLs extraídos (em base64) e o ZIP.
     """
 
     def get(self, request, task_id):
@@ -112,10 +201,34 @@ class TaskStatusView(View):
             result = AsyncResult(task_id)
             response_data = {"state": result.status}
 
-
             if result.status == "SUCCESS":
-                response_data["meta"] = result.result
-                logger.info(f"[Celery Status] Resultado retornado: {result.result}")
+                task_result = result.result
+                logger.info(f"[Celery Status] Task result type: {type(task_result)}")
+                logger.info(f"[Celery Status] Task result keys: {task_result.keys() if isinstance(task_result, dict) else 'Not a dict'}")
+                
+                # Estrutura esperada do result:
+                # {
+                #   'success': True,
+                #   'arquivos_resultado': {'arquivo.pdf': 'xml_string'},
+                #   'zip_id': 'uuid',
+                #   'processed_files': 1,
+                #   'total_files': 1
+                # }
+                
+                if isinstance(task_result, dict) and task_result.get('success'):
+                    response_data["meta"] = {
+                        "arquivos_resultado": task_result.get('arquivos_resultado', {}),
+                        "zip_id": task_result.get('zip_id'),
+                        "processed_files": task_result.get('processed_files', 0),
+                        "total_files": task_result.get('total_files', 0),
+                        "erros": task_result.get('erros', [])
+                    }
+                else:
+                    response_data["meta"] = {
+                        "error": task_result.get('error', 'Erro desconhecido') if isinstance(task_result, dict) else str(task_result)
+                    }
+                    
+                logger.info(f"[Celery Status] Response meta: {response_data['meta']}")
 
             elif result.status == "FAILURE":
                 response_data["meta"] = {"error": str(result.result)}
@@ -123,6 +236,7 @@ class TaskStatusView(View):
                 response_data["meta"] = {}
 
             return JsonResponse(response_data)
+            
         except Exception as e:
             logger.error(f"Erro ao verificar status da tarefa {task_id}: {e}", exc_info=True)
             return JsonResponse({"error": f"Erro interno ao verificar status da tarefa: {str(e)}"}, status=500)

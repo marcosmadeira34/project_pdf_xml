@@ -1,3 +1,4 @@
+from email.policy import default
 import json
 import os
 from google.cloud import documentai_v1 as documentai
@@ -167,7 +168,7 @@ class DocumentAIProcessor:
         'numero_lograd_tomador': 'numeroTomador',
         "pis": "pis",
         "prefeitura_nota": "prefeituraNota",
-        "razao_social": "razaoSocialPrestador",
+        "razao_social_prestador": "razaoSocialPrestador",
         "razao_social_tomador": "razaoSocialTomador",
         "regime_tributario": "regimeTributario",
         "repasse_terceiros": "repasseTerceiros",
@@ -378,7 +379,21 @@ class XMLGenerator:
         logger.warning(f"[CodigoMunicipio] Município '{nome_municipio}-{uf}' não encontrado na base IBGE.")
         return ""
     
-    
+
+    @staticmethod
+    def normalize_valor(valor, default="0.00"):
+        """
+        Normaliza valores financeiros para Decimal, removendo símbolos e tratando erros.
+        """
+        try:
+            valor = str(valor).strip().replace("R$", "").replace(" ", "")
+            # Remove separador de milhar (ponto) e troca vírgula por ponto
+            valor = valor.replace('.', '').replace(',', '.')
+            # Remove qualquer caractere não numérico restante, exceto ponto e sinal negativo
+            valor = re.sub(r'[^\d.-]', '', valor)
+            return Decimal(valor)
+        except Exception:
+            return Decimal(default)
     
     @classmethod
     def gerar_xml_abrasf(cls, dados: Dict) -> str:
@@ -458,10 +473,9 @@ class XMLGenerator:
         inscricao_municipal_clean = re.sub(r'\D', '', inscricao_municipal)
         etree.SubElement(id_prestador, "InscricaoMunicipal").text = inscricao_municipal_clean
         
+        razao_social_prestador = etree.SubElement(prestador_servico, "RazaoSocial")
+        razao_social_prestador.text = dados.get("razaoSocialPrestador", "")
         
-        razao_social_raw = dados.get("razaoSocialPrestador", "")
-        razao_social_formatada = re.sub(r'\s+', ' ', razao_social_raw).strip()
-        etree.SubElement(prestador_servico, "RazaoSocial").text = razao_social_formatada
 
         nome_fantasia_raw = dados.get("nomeFantasiaPrestador", "")
         nome_fantasia_formatada = re.sub(r'\s+', ' ', nome_fantasia_raw).strip()
@@ -544,7 +558,7 @@ class XMLGenerator:
         
         # ValorServicos
         valor_servicos = cls.validar_dados_criticos(dados, "valorServicos")
-        if valor_servicos is None:
+        if not valor_servicos:
             valor_servicos_none = "0.00"  # Define um valor padrão se não for encontrado
             etree.SubElement(valores_servico, "ValorServicos").text = valor_servicos_none
         else:
@@ -595,7 +609,7 @@ class XMLGenerator:
         )        
         etree.SubElement(servico, "IssRetido").text = iss_retido_formatado
 
-        item_lista_servico = str(dados.get("item_lista_servico", "")).strip()
+        item_lista_servico = str(dados.get("item_lista_servico", "0000")).strip()
         print(f"Item Lista Serviço original: {item_lista_servico}")
         # Extrai apenas o código numérico do início (ex: "16.02" de "16.02-Outros serviços...")
         match = re.match(r'^(\d{2}\.\d{2})', item_lista_servico)
@@ -705,9 +719,15 @@ class XMLGenerator:
             valor_liquido_nfse = "{:.2f}".format(Decimal(valor_liquido_str))
         except (InvalidOperation, ValueError):
             try:
-                valor_servicos_dec = Decimal(dados.get("valorServicos", "0").replace(',', '.'))
-                valor_iss_dec = Decimal(dados.get("valorIss", "0").replace(',', '.'))
-                valor_ir_dec = Decimal(dados.get("valorIr", "0").replace(',', '.'))
+                valor_servicos_dec = cls.normalize_valor(dados.get("valorServicos", "0.00"))
+                logger.info(f"Valor serviços original: {dados.get('valorServicos', '0.00')}")
+                logger.info(f"Valor serviços normalizado: {valor_servicos_dec}")
+                if valor_servicos_dec is None:
+                    valor_servicos_dec = base_calculo_formatada
+                    logger.info(f"Valor serviços dec não encontrado, usando base de cálculo: {valor_servicos_dec}")
+
+                valor_iss_dec = cls.normalize_valor(dados.get("valorIss", "0.00"))
+                valor_ir_dec = cls.normalize_valor(dados.get("valorIr", "0.00"))
 
                 valor_liquido_calc = valor_servicos_dec - valor_iss_dec - valor_ir_dec
                 valor_liquido_nfse = "{:.2f}".format(valor_liquido_calc)

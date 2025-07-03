@@ -16,6 +16,7 @@ import zipfile
 
 # --- Importações do sistema de autenticação ---
 from streamlit_auth import StreamlitAuthManager, require_auth, show_login_page
+from streamlit_credits import show_credits_sidebar, show_credit_store, show_payment_details, CreditManager
 
 # --- Suas importações existentes ---
 #from services import XMLGenerator
@@ -40,8 +41,361 @@ st.set_page_config(
     layout="wide"
 )
 
+# --- CSS Customizado com Identidade Visual ---
+def load_custom_css():
+    st.markdown("""
+    <style>
+    /* Importar fontes do Google */
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Lato:wght@300;400;700&display=swap');
+    
+    /* Paleta de cores */
+    :root {
+        --love-red: #E63946;
+        --professional-blue: #1D3557;
+        --warm-beige: #F1FAEE;
+        --accent-blue: #457B9D;
+        --success-green: #2D7D32;
+        --warning-orange: #F57C00;
+    }
+    
+    /* Reset e base */
+    .main {
+        background: linear-gradient(135deg, var(--warm-beige) 0%, #ffffff 100%);
+        font-family: 'Lato', sans-serif;
+    }
+    
+    /* Header principal */
+    .main-header {
+        background: linear-gradient(90deg, var(--professional-blue) 0%, var(--accent-blue) 100%);
+        padding: 2rem;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+        box-shadow: 0 8px 32px rgba(29, 53, 87, 0.1);
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .main-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(241, 250, 238, 0.1) 0%, transparent 70%);
+        animation: float 6s ease-in-out infinite;
+    }
+    
+    @keyframes float {
+        0%, 100% { transform: translateY(0px) rotate(0deg); }
+        50% { transform: translateY(-10px) rotate(2deg); }
+    }
+    
+    .main-header h1 {
+        font-family: 'Poppins', sans-serif;
+        font-weight: 700;
+        font-size: 3rem;
+        color: white;
+        margin: 0;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        position: relative;
+        z-index: 2;
+    }
+    
+    .main-header .subtitle {
+        font-family: 'Lato', sans-serif;
+        font-size: 1.2rem;
+        color: var(--warm-beige);
+        margin-top: 0.5rem;
+        position: relative;
+        z-index: 2;
+    }
+    
+    /* Mascote */
+    .mascot {
+        font-size: 4rem;
+        
+        margin: 1rem 0;
+        position: relative;
+        z-index: 2;
+    }
+    
+    @keyframes bounce {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+    }
+    
+    /* Títulos */
+    h1, h2, h3 {
+        font-family: 'Poppins', sans-serif !important;
+        font-weight: 700 !important;
+        color: var(--professional-blue) !important;
+    }
+    
+    h1 { font-size: 2.5rem !important; }
+    h2 { font-size: 2rem !important; }
+    h3 { font-size: 1.5rem !important; }
+    
+    /* Abas customizadas */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 10px;
+        background: white;
+        border-radius: 10px;
+        padding: 0.5rem;
+        box-shadow: 0 4px 16px rgba(29, 53, 87, 0.1);
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        background: var(--warm-beige);
+        border-radius: 8px;
+        font-family: 'Poppins', sans-serif;
+        font-weight: 600;
+        color: var(--professional-blue);
+        border: 2px solid transparent;
+        transition: all 0.3s ease;
+    }
+    
+    .stTabs [data-baseweb="tab"]:hover {
+        background: var(--love-red);
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(230, 57, 70, 0.3);
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background: var(--love-red) !important;
+        color: white !important;
+        border-color: var(--professional-blue) !important;
+    }
+    
+    /* Botões customizados */
+    .stButton button {
+        background: linear-gradient(45deg, var(--love-red), #ff4757);
+        color: white;
+        border: none;
+        border-radius: 25px;
+        font-family: 'Poppins', sans-serif;
+        font-weight: 600;
+        padding: 0.75rem 2rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(230, 57, 70, 0.3);
+    }
+    
+    .stButton button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(230, 57, 70, 0.4);
+        background: linear-gradient(45deg, #d12d3c, var(--love-red));
+    }
+    
+    /* Botões secundários */
+    .secondary-button {
+        background: linear-gradient(45deg, var(--professional-blue), var(--accent-blue)) !important;
+        color: white !important;
+        border-radius: 20px !important;
+        font-family: 'Poppins', sans-serif !important;
+        font-weight: 500 !important;
+        box-shadow: 0 3px 10px rgba(29, 53, 87, 0.3) !important;
+    }
+    
+    /* Cards e containers */
+    .metric-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 15px;
+        box-shadow: 0 4px 20px rgba(29, 53, 87, 0.1);
+        border-left: 4px solid var(--love-red);
+        margin: 1rem 0;
+        transition: transform 0.3s ease;
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 30px rgba(29, 53, 87, 0.15);
+    }
+    
+    .info-box {
+        background: linear-gradient(135deg, var(--warm-beige), white);
+        padding: 1.5rem;
+        border-radius: 12px;
+        border: 1px solid rgba(29, 53, 87, 0.1);
+        margin: 1rem 0;
+    }
+    
+    /* Expanders customizados */
+    .streamlit-expanderHeader {
+        background: var(--warm-beige) !important;
+        border-radius: 10px !important;
+        font-family: 'Poppins', sans-serif !important;
+        font-weight: 600 !important;
+        color: var(--professional-blue) !important;
+    }
+    
+    /* File uploader */
+    .stFileUploader > div > div {
+        background: var(--warm-beige);
+        border: 2px dashed var(--love-red);
+        border-radius: 15px;
+        padding: 2rem;
+        text-align: center;
+    }
+    
+    /* Progress bars */
+    .stProgress .st-bo {
+        background: var(--love-red);
+    }
+    
+    /* Selectbox e multiselect */
+    .stSelectbox > div > div {
+        background: white;
+        border: 2px solid var(--warm-beige);
+        border-radius: 10px;
+        font-family: 'Lato', sans-serif;
+    }
+    
+    /* Dataframes */
+    .dataframe {
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(29, 53, 87, 0.1);
+    }
+    
+    /* Sidebar */
+    .css-1d391kg {
+        background: linear-gradient(180deg, var(--professional-blue), var(--accent-blue));
+    }
+    
+    .sidebar .sidebar-content {
+        background: white;
+        border-radius: 15px;
+        margin: 1rem;
+        padding: 1rem;
+    }
+    
+    /* Mensagens de status */
+    .stSuccess {
+        background: linear-gradient(90deg, #4CAF50, #66BB6A);
+        color: white;
+        border-radius: 10px;
+        font-family: 'Lato', sans-serif;
+    }
+    
+    .stError {
+        background: linear-gradient(90deg, #F44336, #EF5350);
+        color: white;
+        border-radius: 10px;
+        font-family: 'Lato', sans-serif;
+    }
+    
+    .stWarning {
+        background: linear-gradient(90deg, #FF9800, #FFB74D);
+        color: white;
+        border-radius: 10px;
+        font-family: 'Lato', sans-serif;
+    }
+    
+    .stInfo {
+        background: linear-gradient(90deg, var(--accent-blue), #64B5F6);
+        color: white;
+        border-radius: 10px;
+        font-family: 'Lato', sans-serif;
+    }
+    
+    /* Ícones customizados */
+    .icon {
+        font-size: 1.5rem;
+        margin-right: 0.5rem;
+        vertical-align: middle;
+    }
+    
+    /* Animações de entrada */
+    .fade-in {
+        animation: fadeIn 0.8s ease-in;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .main-header h1 { font-size: 2rem !important; }
+        .main-header .subtitle { font-size: 1rem !important; }
+        .mascot { font-size: 3rem; }
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# Aplicar CSS customizado
+load_custom_css()
+
+# --- Header Principal com Mascote ---
+def render_main_header():
+    st.markdown("""
+    <div class="main-header fade-in">
+        <h1>LoveNFSE</h1>
+        <div class="subtitle">A ferramenta que faz você amar até a nota fiscal da prefeitura</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# --- Sidebar com Informações do Usuário ---
+def render_user_sidebar():
+    show_credits_sidebar()
+
+# --- Cards de Métricas ---
+def render_metrics_cards():
+    col1, col2, col3, col4 = st.columns(4)
+    
+    total_files = len(st.session_state.uploaded_files_info)
+    processed_files = len([f for f in st.session_state.uploaded_files_info if f['Status'] == 'Concluído'])
+    success_rate = (processed_files / total_files * 100) if total_files > 0 else 0
+    
+    with col1:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div style="font-size: 2rem; color: #E63946; margin-bottom: 0.5rem;">📄</div>
+            <div style="font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 2rem; color: #1D3557;">{total_files}</div>
+            <div style="font-family: 'Lato', sans-serif; color: #457B9D;">PDFs Carregados</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div style="font-size: 2rem; color: #2D7D32; margin-bottom: 0.5rem;">✅</div>
+            <div style="font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 2rem; color: #1D3557;">{processed_files}</div>
+            <div style="font-family: 'Lato', sans-serif; color: #457B9D;">Processados</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div style="font-size: 2rem; color: #F57C00; margin-bottom: 0.5rem;">📊</div>
+            <div style="font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 2rem; color: #1D3557;">{success_rate:.1f}%</div>
+            <div style="font-family: 'Lato', sans-serif; color: #457B9D;">Taxa de Sucesso</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col4:
+        estimated_time_saved = processed_files * 5  # 5 minutos economizados por arquivo
+        st.markdown(f"""
+        <div class="metric-card">
+            <div style="font-size: 2rem, color: #E63946, margin-bottom: 0.5rem;">⏱️</div>
+            <div style="font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 2rem; color: #1D3557;">{estimated_time_saved}</div>
+            <div style="font-family: 'Lato', sans-serif; color: #457B9D;">Minutos Economizados</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+
 # --- Inicialização do Sistema de Autenticação ---
 StreamlitAuthManager.initialize_session_state()
+
+# --- Inicialização de Estado da Sessão (MOVER PARA ANTES DA AUTENTICAÇÃO) ---
+if 'uploaded_files_info' not in st.session_state:
+    st.session_state.uploaded_files_info = []
+    
 
 # Verifica autenticação antes de mostrar qualquer conteúdo
 if not StreamlitAuthManager.ensure_authenticated():
@@ -49,8 +403,24 @@ if not StreamlitAuthManager.ensure_authenticated():
     st.stop()  # Para a execução aqui se não estiver autenticado
 
 # Se chegou até aqui, o usuário está autenticado
-st.title("Sistema de Automação para Notas Fiscais de Serviço")
-st.markdown("Automatize a extração inteligente de dados de NFS-e em PDF utilizando IA e integre diretamente com seu sistema Domínio via API de forma segura e eficiente.")
+render_main_header()
+render_user_sidebar()
+
+# --- Verifica se deve mostrar a loja de créditos ---
+if st.session_state.get('show_payment_details'):
+    show_payment_details()
+    st.stop()
+
+if st.session_state.get('show_credit_store'):
+    show_credit_store()
+    st.stop()
+
+# --- Métricas Dashboard ---
+render_metrics_cards()
+
+# Se chegou até aqui, o usuário está autenticado
+# st.title("Sistema de Automação para Notas Fiscais de Serviço")
+# st.markdown("Automatize a extração inteligente de dados de NFS-e em PDF utilizando IA e integre diretamente com seu sistema Domínio via API de forma segura e eficiente.")
 
 # --- Diretórios de Upload e Saída ---
 UPLOAD_DIR = Path("data/uploads")
@@ -85,20 +455,27 @@ def call_django_backend(endpoint: str, method: str = "POST",
     
     url = f"{DJANGO_BACKEND_URL}{endpoint}"
     headers = StreamlitAuthManager.get_auth_headers()
-
-    #st.sidebar.markdown(f"**Chamando:** `{method.upper()}` `{url}`")
+    
+    # Debug para verificar se o token está sendo enviado
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"Calling {method} {url}")
+    logger.info(f"Headers: {headers}")
 
     try:
         response = None
         if method.upper() == "POST":
             if files_data:
+                # Para files, não incluir Content-Type no header (requests define automaticamente)
+                file_headers = {k: v for k, v in headers.items() if k != 'Content-Type'}
+                
                 # Transforma o dicionário files_data no formato que requests.post espera para 'files'
-                files_payload = [
-                    ("files", (name, content, "application/pdf")) for name, content in files_data.items()
-                ]
-                response = requests.post(url, files=files_payload, headers=headers, timeout=120)
+                files_payload = []
+                for name, content in files_data.items():
+                    files_payload.append(("files[]", (name, content, "application/pdf")))
+                
+                response = requests.post(url, files=files_payload, headers=file_headers, timeout=120)
             elif json_data:
-                headers["Content-Type"] = "application/json"
                 response = requests.post(url, json=json_data, headers=headers, timeout=120)
             else:
                 response = requests.post(url, headers=headers, timeout=120)
@@ -114,7 +491,6 @@ def call_django_backend(endpoint: str, method: str = "POST",
             return response.json()
         except json.JSONDecodeError:
             st.error(f"Backend retornou uma resposta não-JSON válida do endpoint '{endpoint}': {response.text[:500]}...")
-            st.sidebar.error(f"Resposta bruta (não-JSON) do endpoint '{endpoint}': {response.text[:500]}...")
             return None
 
     except requests.exceptions.Timeout:
@@ -137,7 +513,6 @@ def call_django_backend(endpoint: str, method: str = "POST",
         except json.JSONDecodeError:
             error_detail = e.response.text
         st.error(f"Erro HTTP do backend ({e.response.status_code}) ao chamar '{endpoint}': {error_detail}")
-        st.sidebar.error(f"Detalhes do erro HTTP: {e.response.text[:500]}...")
         return None
     except Exception as e:
         st.error(f"Erro inesperado ao chamar o backend em '{endpoint}': {str(e)}")
@@ -531,8 +906,17 @@ tab1, tab2, tab3, tab4 = st.tabs(["📥 Importar PDFs", "🔍 Revisar & Converte
 
 # --- TAB 1: Importar PDFs ---
 with tab1:
-    st.header("Passo 1: Importar Notas em PDF")
-    st.markdown("Arraste e solte seus arquivos PDF ou use o botão para selecioná-los.")
+    st.markdown("""
+    <div class="fade-in">
+        <h2><span class="icon">📥</span>Importar Suas Notas Fiscais</h2>
+        <div class="info-box">
+            <p style="font-family: 'Lato', sans-serif; margin: 0;">
+                <strong>💡 Dica:</strong> Arraste e solte seus arquivos PDF ou use o botão abaixo. 
+                Nossa IA processará automaticamente os dados com precisão!
+            </p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     with st.expander("⬆️ Enviar arquivos PDF"):
         uploaded_files = st.file_uploader(
@@ -547,9 +931,21 @@ with tab1:
             new_uploads_count = 0
             for f in uploaded_files:
                 file_path = UPLOAD_DIR / f.name
-                if not file_path.exists():
-                    with open(file_path, "wb") as out:
-                        out.write(f.read())
+                with open(file_path, "wb") as out:
+                    out.write(f.read())
+                
+                # Verifica se o arquivo já existe na lista (evita duplicação na interface)
+                existing_file = next((info for info in st.session_state.uploaded_files_info 
+                                    if info["Nome do Arquivo"] == f.name), None)
+                
+                if existing_file:
+                    # Atualiza o arquivo existente para status "Carregado" novamente
+                    existing_file["Status"] = "Carregado"
+                    existing_file["XML Gerado"] = "-"
+                    existing_file["Status Envio"] = "-"
+                    existing_file["Detalhes"] = "Arquivo recarregado"
+                else:
+                    # Adiciona novo arquivo à lista
                     st.session_state.uploaded_files_info.append({
                         "Nome do Arquivo": f.name,
                         "Caminho": str(file_path),
@@ -558,20 +954,33 @@ with tab1:
                         "Status Envio": "-",
                         "Detalhes": ""
                     })
-                    new_uploads_count += 1
+                new_uploads_count += 1
                 
             if new_uploads_count > 0:
-                st.success(f"{new_uploads_count} arquivo(s) novo(s) salvo(s) com sucesso!")
+                st.success(f"{new_uploads_count} arquivo(s) salvo(s) com sucesso!")
 
-# --- TAB 2: Revisar & Converter ---
+# --- TAB 2: Processar & Converter ---
 with tab2:
-    st.header("Passo 2: Revisar e Converter PDFs para XML")
-    st.markdown("Verifique os PDFs carregados e inicie o processo de conversão para XML.")
+    st.markdown("""
+    <div class="fade-in">
+        <h2><span class="icon">🔄</span>Processar e Converter</h2>
+        <div class="info-box">
+            <p style="font-family: 'Lato', sans-serif; margin: 0;">
+                <strong>🚀 Nossa IA:</strong> Extrai dados automaticamente com 99.9% de precisão. 
+                Selecione os PDFs e deixe a mágica acontecer!
+            </p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     if not st.session_state.uploaded_files_info:
         st.info("Nenhum PDF carregado ainda. Volte para a aba 'Importar PDFs'.")
+        # Cria DataFrame vazio para evitar erro
+        df_files = pd.DataFrame(columns=['Nome do Arquivo', 'Status', 'XML Gerado', 'Status Envio'])
     else:
+        # Cria DataFrame com os arquivos carregados
         df_files = pd.DataFrame(st.session_state.uploaded_files_info)
+        
         # Filtra arquivos que ainda não foram processados ou falharam
         df_to_process = df_files[~df_files['Status'].isin(['Concluído', 'Erro'])]
 
@@ -596,213 +1005,230 @@ with tab2:
 
             if st.button("Converter PDFs Selecionados para XML", key="btn_convert_pdfs"):
                 if selected_files_indices:
-                    st.info("Preparando arquivos para envio...")
-                    files_data_for_backend = {}
-                    original_indices_map = {} # Mapeia file_name para o índice original no session_state
-                    for idx in selected_files_indices:
-                        file_info = st.session_state.uploaded_files_info[idx]
+                    # Verifica créditos BASEADO NO NÚMERO DE ARQUIVOS SELECIONADOS
+                    credit_check = CreditManager.check_credits_for_files(len(selected_files_indices))
+                    
+                    if not credit_check['has_enough']:
+                        st.error(f"""
+                        ❌ **Créditos Insuficientes!**
+                        
+                        - **Arquivos selecionados:** {len(selected_files_indices)}
+                        - **Créditos necessários:** {credit_check['required']}
+                        - **Seus créditos:** {credit_check['current_balance']}
+                        - **Faltam:** {credit_check['missing']} crédito(s)
+                        
+                        Cada arquivo consome 1 crédito. Compre mais créditos para continuar! 🛒
+                        """)
+                        
+                        if st.button("🛒 Comprar Créditos Agora", type="primary"):
+                            st.session_state.show_credit_store = True
+                            st.rerun()
+                        
+                        st.stop()
+                    
+                    # Mostra confirmação DETALHADA de consumo
+                    st.info(f"""
+                    ℹ️ **Confirmação de Créditos**
+                    
+                    - **Arquivos a processar:** {len(selected_files_indices)}
+                    - **Créditos que serão consumidos:** {credit_check['required']}
+                    - **Seus créditos atuais:** {credit_check['current_balance']}
+                    - **Créditos restantes após processamento:** {credit_check['remaining_after']}
+                    
+                    💡 **Importante:** Os créditos serão debitados ANTES do processamento iniciar.
+                    """)
+                    
+                    selected_files = [st.session_state.uploaded_files_info[i] for i in selected_files_indices]
+                    
+                    # Prepara os arquivos para envio
+                    files_dict = {}
+                    for file_info in selected_files:
+                        # Lê o arquivo do disco
                         file_path = Path(file_info["Caminho"])
                         if file_path.exists():
                             with open(file_path, "rb") as f:
-                                files_data_for_backend[file_path.name] = f.read()
-                            original_indices_map[file_path.name] = idx
-                        else:
-                            st.warning(f"Arquivo não encontrado: {file_path.name}. Pulando.")
-                    # DEBUG: Mostra os arquivos que serão enviados e o mapeamento de índices
-                    #st.write("DEBUG - files_data_for_backend.keys():", list(files_data_for_backend.keys()))
-                    #st.write("DEBUG - original_indices_map:", original_indices_map)
-
-                    if files_data_for_backend:
-                        st.info("Enviando PDFs para processamento no backend...")
-                        # DEBUG: Antes de chamar o backend
-                        #st.write("DEBUG - Chamando call_django_backend com arquivos:", list(files_data_for_backend.keys()))
-                        # Use a função genérica para chamar o endpoint de upload/processamento
-                        response_data = call_django_backend(
-                            endpoint="/upload-e-processar-pdf/", # ENDPOINT REAL NO SEU DJANGO para iniciar a tarefa CELERY
-                            method="POST",
-                            files_data=files_data_for_backend
-                        )
-                        # DEBUG: Mostra a resposta do backend
-                        #st.write("DEBUG - response_data:", response_data)
-                        print(f"Response Data é: {response_data}")
-
-                        if response_data is None:
-                            st.error("Falha na comunicação com o backend para iniciar o processamento. Verifique logs.")
-                        else:
-                            task_ids = response_data.get('task_ids', [])
-                            error_message = response_data.get('error', None) # Se o backend retornar um campo 'error'
-
-                            if error_message:
-                                st.error(f"Falha ao iniciar processamento: {error_message}")
-                            elif task_ids:
-                                st.success(f"Processamento iniciado para {len(task_ids)} lote(s).")
-                                st.session_state['active_task_ids'] = task_ids
-                                # Atualiza o status no Streamlit para 'Processando'
-                                for file_name, original_idx in original_indices_map.items():
-                                    st.session_state.uploaded_files_info[original_idx]["Status"] = "Processando"
-                                    st.session_state.uploaded_files_info[original_idx]["Detalhes"] = "Aguardando resultado do backend..."
-
-                                # Agora, entraremos em um loop para consultar o status
-                                st.subheader("Verificando status do processamento...")
-                                progress_bar = st.progress(0)
-                                all_tasks_completed = False
-                                start_time = time.time()
-                                total_files_in_tasks = len(files_data_for_backend) # Total de arquivos que foram enviados
-
-                                # Inicializações obrigatórias no início da aba/função
-                                if 'downloads_feitos' not in st.session_state:
-                                    st.session_state['downloads_feitos'] = set()
-
-                                if 'zip_download_ready' not in st.session_state:
-                                    st.session_state['zip_download_ready'] = {}
-
-                                # Loop principal de polling para verificar status das tasks
-                                start_time = time.time()
-                                timeout_seconds = 300  # 5 minutos
-                                all_tasks_completed = False
-
-                                progress_bar = st.progress(0)
-
-                                while not all_tasks_completed and (time.time() - start_time < timeout_seconds):
-                                    all_tasks_completed = True
-                                    completed_count = 0
-
-                                    for task_id in st.session_state['active_task_ids']:
-                                        status_response = call_django_backend(
-                                            endpoint=f"/task-status/{task_id}/",
-                                            method="GET"
-                                        )
-
-                                        if status_response is None:
-                                            state = "UNKNOWN"
-                                            meta = {"error": "Erro ao obter status da tarefa."}
-                                        else:
-                                            state = status_response.get("state")
-                                            meta = status_response.get("meta", {})
-
-                                        processed_files_in_task = meta.get("processed", 0)
-                                        errored_files_in_task = meta.get("erros", [])
-
-                                        
-                                        if state == "SUCCESS":
-                                            resultados = meta.get("arquivos_resultado", {})
-
-                                            for file_name, resultado in resultados.items():
-                                                idx = original_indices_map.get(file_name)
-
-                                                if resultado.get("status") == "ok":
-                                                    xml_str = resultado.get("xml", "")
-
-                                                    # Atualiza o status na interface
-                                                    if idx is not None:
-                                                        st.session_state.uploaded_files_info[idx]["Status"] = "Concluído"
-                                                        st.session_state.uploaded_files_info[idx]["XML Gerado"] = "Sim"
-                                                        st.session_state.uploaded_files_info[idx]["Detalhes"] = "Processado com sucesso"
-
-                                                    # Guarda o XML no session_state para download
-                                                    st.session_state.setdefault('xmls_gerados', {})[file_name] = xml_str
-
-                                                else:
-                                                    erro_msg = resultado.get("erro", "Erro desconhecido")
-                                                    if idx is not None:
-                                                        st.session_state.uploaded_files_info[idx]["Status"] = "Erro"
-                                                        st.session_state.uploaded_files_info[idx]["XML Gerado"] = "Não"
-                                                        st.session_state.uploaded_files_info[idx]["Detalhes"] = erro_msg
-                                                    st.error(f"Erro ao processar {file_name}: {erro_msg}")
-
-                                            # 👇 ESTA PARTE AGORA FICA FORA DO LOOP
-                                            zip_id = meta.get('zip_id')
-                                            if zip_id:
-                                                st.session_state['zip_id'] = zip_id
-                                            completed_count += processed_files_in_task
-
-                                        elif state in ["PENDING", "PROGRESS"]:
-                                            all_tasks_completed = False
-                                            completed_count += processed_files_in_task
-
-                                        elif state in ["FAILURE", "UNKNOWN"]:
-                                            for file_name, original_idx in original_indices_map.items():
-                                                if st.session_state.uploaded_files_info[original_idx]["Status"] != "Concluído":
-                                                    st.session_state.uploaded_files_info[original_idx]["Status"] = "Erro"
-                                                    st.session_state.uploaded_files_info[original_idx]["Detalhes"] = f"Falha na tarefa Celery: {meta.get('error', 'Erro desconhecido')}"
-                                                    st.session_state.uploaded_files_info[original_idx]["XML Gerado"] = "Não"
-                                            all_tasks_completed = True
-                                            completed_count += total_files_in_tasks
-
-                                    # Atualiza a barra de progresso
-                                    current_progress = min(1.0, completed_count / total_files_in_tasks) if total_files_in_tasks > 0 else 0
-                                    progress_bar.progress(current_progress)
-
-                                    if not all_tasks_completed:
-                                        time.sleep(2)
-
-                                progress_bar.empty()
-        
-        st.subheader("Status dos PDFs Carregados:")
-        st.dataframe(df_files[['Nome do Arquivo', 'Status', 'XML Gerado', 'Status Envio']], use_container_width=True)
-
-        # Botões de download permanentes:
-        if st.session_state.get('xmls_gerados'):
-            st.markdown("### 📄 XMLs Gerados:")
-            for file_name, xml_str in st.session_state['xmls_gerados'].items():
-                st.download_button(
-                    label=f"📅 Baixar XML - {file_name.replace('.pdf', '.xml')}",
-                    data=xml_str,
-                    file_name=file_name.replace('.pdf', '.xml'),
-                    mime="application/xml",
-                    key=f"download_btn_{file_name}_{hash(xml_str)}"
-                )
-
-        if 'zip_id' in st.session_state:
-            st.markdown("### 📦 Baixar todos os XMLs em um único ZIP")
-            # Remove a extensão .zip do ID
-            download_url = f"{DJANGO_BACKEND_URL}/download-zip/{st.session_state['zip_id']}/"
-
-            st.markdown(
-                f"""
-                <a href="{download_url}" target="_blank">
-                    <button style="background-color:#4CAF50;color:white;padding:10px 20px;border:none;border-radius:5px;cursor:pointer;">
-                        📅 Baixar ZIP
-                    </button>
-                </a>
-                """,
-                unsafe_allow_html=True
-            )
-                                
-            
-        
-        pdfs_ready = [info for info in st.session_state.uploaded_files_info if Path(info["Caminho"]).exists()]
-        if pdfs_ready:
-            selected_pdf_name = st.selectbox(
-                "Selecione um PDF para visualizar status:",
-                options=[info["Nome do Arquivo"] for info in pdfs_ready],
-                format_func=lambda x: x,
-                key="selectbox_view_pdf"
-            )
-            if selected_pdf_name:
-                selected_pdf_info = next(info for info in pdfs_ready if info["Nome do Arquivo"] == selected_pdf_name)
-                selected_pdf_path = Path(selected_pdf_info["Caminho"])
-
-                col_pdf, col_data = st.columns([1, 1])
-
-                with col_pdf:
-                    st.markdown(f"**Visualizando PDF:** `{selected_pdf_name}`")
-                    st.components.v1.iframe(str(selected_pdf_path.as_posix()), height=600, scrolling=True)
-
-                with col_data:
-                    st.markdown(f"**Status de Processamento:**")
-                    st.info(f"Status: {selected_pdf_info['Status']}")
-                    st.info(f"XML Gerado: {selected_pdf_info['XML Gerado']}")
-                    st.info(f"Detalhes: {selected_pdf_info['Detalhes']}")
+                                files_dict[file_info["Nome do Arquivo"]] = f.read()
                     
+                    with st.spinner("🚀 Enviando arquivos para processamento..."):
+                        response = call_django_backend("/upload-e-processar-pdf/", files_data=files_dict)
+                    
+                    if response:
+                        if response.get("success"):
+                            # CORRIGIDO: Agora recebemos um único task_id
+                            task_id = response.get("task_id")  # Em vez de task_ids
+                            merge_id = response.get("merge_id", "")
+                            
+                            st.session_state.task_status = {
+                                "task_id": task_id,  # Único task_id
+                                "merge_id": merge_id,
+                                "files_count": response.get("files_count", len(selected_files)),
+                                "credits_used": response.get("credits_used", len(selected_files)),
+                                "remaining_credits": response.get("remaining_credits", 0)
+                            }
+                            
+                            st.success(f"""
+                            ✅ **Processamento Iniciado com Sucesso!**
+                            
+                            - **Arquivos enviados:** {len(selected_files)}
+                            - **Créditos consumidos:** {response.get('credits_used', len(selected_files))}
+                            - **Créditos restantes:** {response.get('remaining_credits', 0)}
+                            - **Task ID:** {task_id}
+                            
+                            ⏳ Aguarde o processamento ser concluído...
+                            """)
+                            
+                            st.rerun()
+                        else:
+                            st.error(f"❌ Erro no processamento: {response.get('error', 'Erro desconhecido')}")
+                    else:
+                        st.error("❌ Falha na comunicação com o backend para iniciar o processamento. Verifique logs.")
 
+    # Seção de Status - SEMPRE EXIBIDA (fora dos if/else anteriores)
+    st.markdown("---")
+    st.subheader("Status dos PDFs Carregados:")
+    
+    if not df_files.empty:
+        st.dataframe(df_files[['Nome do Arquivo', 'Status', 'XML Gerado', 'Status Envio']], use_container_width=True)
+    else:
+        st.info("Nenhum arquivo carregado ainda.")
+
+    # Verificação de status de tarefas em andamento
+    if "task_status" in st.session_state and st.session_state.task_status:
+        task_id = st.session_state.task_status["task_id"]
+        
+        with st.spinner("🔄 Verificando status do processamento..."):
+            status_response = call_django_backend(f"/task-status/{task_id}/", method="GET")
+        
+        if status_response:
+            state = status_response.get("state", "UNKNOWN")
+            
+            if state == "SUCCESS":
+                st.success("✅ Processamento concluído com sucesso!")
+                
+                meta = status_response.get("meta", {})
+                arquivos_resultado = meta.get("arquivos_resultado", {})
+                zip_id = meta.get("zip_id")
+                erros = meta.get("erros", [])
+                
+                # Log para debug
+                st.write("**Debug - Tipo de arquivos_resultado:**", type(arquivos_resultado))
+                st.write("**Debug - Chaves:**", list(arquivos_resultado.keys()) if isinstance(arquivos_resultado, dict) else "Não é dict")
+                
+                if arquivos_resultado and isinstance(arquivos_resultado, dict):
+                    # Armazena XMLs corretamente
+                    st.session_state.xmls_gerados = {}
+                    
+                    for file_name, xml_content in arquivos_resultado.items():
+                        if isinstance(xml_content, str):
+                            # Verifica se é XML válido
+                            if xml_content.strip().startswith('<?xml') or xml_content.strip().startswith('<'):
+                                st.session_state.xmls_gerados[file_name] = xml_content
+                                st.write(f"✅ XML válido para {file_name} (tamanho: {len(xml_content)} chars)")
+                            else:
+                                st.error(f"❌ XML inválido para {file_name}: não começa com '<'")
+                                st.write(f"Conteúdo recebido: {xml_content[:100]}...")
+                        else:
+                            st.error(f"❌ Formato incorreto para {file_name}: {type(xml_content)}")
+                    
+                    # Atualiza status dos arquivos processados
+                    for file_name in arquivos_resultado.keys():
+                        for i, file_info in enumerate(st.session_state.uploaded_files_info):
+                            if file_info["Nome do Arquivo"] == file_name:
+                                st.session_state.uploaded_files_info[i]["Status"] = "Concluído"
+                                st.session_state.uploaded_files_info[i]["XML Gerado"] = "Sim"
+                
+                if zip_id:
+                    st.session_state.zip_id = zip_id
+                
+                if erros:
+                    st.warning(f"⚠️ Alguns arquivos tiveram problemas: {erros}")
+                
+                # Limpa o status da tarefa
+                del st.session_state.task_status
+                st.rerun()
+                
+            elif state == "FAILURE":
+                st.error("❌ Erro no processamento!")
+                error_message = status_response.get("meta", {}).get("error", "Erro desconhecido")
+                st.error(f"Detalhes: {error_message}")
+                
+                # Limpa o status da tarefa
+                del st.session_state.task_status
+                
+            elif state in ["PENDING", "STARTED"]:
+                st.info(f"⏳ Status: {state} - Aguardando conclusão...")
+                time.sleep(2)
+                st.rerun()
+            else:
+                st.warning(f"⚠️ Status desconhecido: {state}")
+
+    # Botões de download corrigidos:
+    if st.session_state.get('xmls_gerados'):
+        st.markdown("---")
+        st.markdown("### 📄 XMLs Gerados:")
+        
+        xmls_gerados = st.session_state.get('xmls_gerados', {})
+        
+        if isinstance(xmls_gerados, dict) and xmls_gerados:
+            for file_name, xml_content in xmls_gerados.items():
+                
+                # Verifica se é string válida
+                if isinstance(xml_content, str) and xml_content.strip():
+                    
+                    # Verifica se é XML válido
+                    if xml_content.strip().startswith('<?xml') or xml_content.strip().startswith('<'):
+                        
+                        # Mostra preview do XML
+                        with st.expander(f"📄 Preview: {file_name}"):
+                            st.code(xml_content[:500] + "..." if len(xml_content) > 500 else xml_content, language="xml")
+                        
+                        # Botão de download
+                        button_key = f"download_btn_{file_name}_{len(xml_content)}"
+                        
+                        st.download_button(
+                            label=f"📅 Baixar XML - {file_name.replace('.pdf', '.xml')}",
+                            data=xml_content,
+                            file_name=file_name.replace('.pdf', '.xml'),
+                            mime="application/xml",
+                            key=button_key
+                        )
+                    else:
+                        st.error(f"❌ XML inválido para {file_name}: não é XML válido")
+                        st.code(xml_content[:200], language="text")
+                else:
+                    st.error(f"❌ Conteúdo inválido para {file_name}: {type(xml_content)}")
         else:
-            st.info("Nenhum PDF disponível para visualização.")
+            st.warning("⚠️ Nenhum XML válido encontrado.")
+
+    if 'zip_id' in st.session_state:
+        st.markdown("### 📦 Baixar todos os XMLs em um único ZIP")
+        download_url = f"{DJANGO_BACKEND_URL}/download-zip/{st.session_state['zip_id']}/"
+
+        st.markdown(
+            f"""
+            <a href="{download_url}" target="_blank">
+                <button style="background-color:#4CAF50;color:white;padding:10px 20px;border:none;border-radius:5px;cursor:pointer;">
+                    📅 Baixar ZIP
+                </button>
+            </a>
+            """,
+            unsafe_allow_html=True
+        )
+
 
 # --- TAB 3: Enviar para API ---
 with tab3:
-    st.header("Passo 3: Enviar XMLs para a API")
-    st.markdown("Selecione os XMLs que já foram gerados e envie-os para a API de integração.")
+    st.markdown("""
+    <div class="fade-in">
+        <h2><span class="icon">🚀</span>Enviar para API</h2>
+        <div class="info-box">
+            <p style="font-family: 'Lato', sans-serif; margin: 0;">
+                <strong>🎯 Integração:</strong> Envie seus XMLs processados diretamente para o sistema externo. 
+                Rápido, seguro e confiável!
+            </p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     # A lógica aqui assume que você baixou o ZIP e extraiu os XMLs para algum lugar localmente
     # ou que o Streamlit agora pode fazer requisições para pegar XMLs individuais se o Django os expor.
@@ -894,37 +1320,83 @@ with tab3:
     else:
         st.info("Nenhum arquivo carregado ou processado ainda.")
 
-# --- TAB 4: Histórico ---
+# --- TAB 4: Relatórios ---
 with tab4:
-    st.header("Passo 4: Histórico de Processamento")
-    st.markdown("Consulte o status e os detalhes de todos os arquivos processados.")
-
+    st.markdown("""
+    <div class="fade-in">
+        <h2><span class="icon">📊</span>Relatórios e Histórico</h2>
+        <div class="info-box">
+            <p style="font-family: 'Lato', sans-serif; margin: 0;">
+                <strong>📈 Analytics:</strong> Acompanhe seu progresso, métricas de sucesso e histórico completo. 
+                Dados que ajudam você a crescer!
+            </p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
     if st.session_state.uploaded_files_info:
         df_history = pd.DataFrame(st.session_state.uploaded_files_info)
-        st.dataframe(df_history, use_container_width=True)
-
+        
+        # Gráfico de pizza para status
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("#### 📊 Distribuição de Status")
+            status_counts = df_history['Status'].value_counts()
+            st.bar_chart(status_counts)
+        
+        with col2:
+            st.markdown("#### ⏱️ Economia de Tempo")
+            total_processed = len(df_history[df_history['Status'] == 'Concluído'])
+            time_saved = total_processed * 3  # 3 minutos por arquivo
+            
+            st.markdown(f"""
+            <div class="metric-card">
+                <div style="text-align: center;">
+                    <div style="font-size: 3rem; color: #E63946;">⏰</div>
+                    <div style="font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 2.5rem; color: #1D3557;">
+                        {time_saved} min
+                    </div>
+                    <div style="font-family: 'Lato', sans-serif; color: #457B9D;">
+                        Tempo Total Economizado
+                    </div>
+                    <div style="font-family: 'Lato', sans-serif; color: #2D7D32; font-size: 0.9rem; margin-top: 0.5rem;">
+                        ≈ R$ {time_saved * 2:.2f} em produtividade
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        
         st.markdown("---")
-        st.subheader("Filtros de Histórico (Exemplo):")
-
-        status_filter = st.multiselect(
-            "Filtrar por Status de Conversão:",
-            options=df_history['Status'].unique().tolist(),
-            default=df_history['Status'].unique().tolist(),
-            key="multiselect_history_status"
-        )
-
-        send_status_filter = st.multiselect(
-            "Filtrar por Status de Envio:",
-            options=df_history['Status Envio'].unique().tolist(),
-            default=df_history['Status Envio'].unique().tolist(),
-            key="multiselect_history_send_status"
-        )
+        st.markdown("#### 🔍 **Filtros Avançados:**")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            status_filter = st.multiselect(
+                "📊 **Status de Processamento:**",
+                options=df_history['Status'].unique().tolist(),
+                default=df_history['Status'].unique().tolist(),
+                key="multiselect_history_status"
+            )
+        
+        with col2:
+            send_status_filter = st.multiselect(
+                "🚀 **Status de Envio:**",
+                options=df_history['Status Envio'].unique().tolist(),
+                default=df_history['Status Envio'].unique().tolist(),
+                key="multiselect_history_send_status"
+            )
 
         filtered_df = df_history[
             (df_history['Status'].isin(status_filter)) &
             (df_history['Status Envio'].isin(send_status_filter))
         ]
 
-        st.dataframe(filtered_df[['Nome do Arquivo', 'Status', 'XML Gerado', 'Status Envio', 'Detalhes']], use_container_width=True)
+        st.markdown("#### 📋 **Histórico Detalhado:**")
+        st.dataframe(
+            filtered_df[['Nome do Arquivo', 'Status', 'XML Gerado', 'Status Envio', 'Detalhes']],
+            use_container_width=True
+        )
     else:
-        st.info("Nenhum histórico disponível ainda.")
+        st.info("Nenhum dado de histórico disponível. Faça upload e processe alguns PDFs primeiro.")

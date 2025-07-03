@@ -3,6 +3,7 @@ import requests
 import json
 from typing import Optional, Dict, Any
 import os
+import time
 
 # Configurações do backend Django
 DJANGO_BACKEND_URL = os.getenv("DJANGO_BACKEND_URL", "http://127.0.0.1:8001")
@@ -213,45 +214,206 @@ class StreamlitAuthManager:
 
 
 def show_login_page():
-    """Exibe a página de login"""
-    st.title("🔐 Login - NFS-e Control")
-    st.markdown("Entre com suas credenciais para acessar o sistema")
+    """
+    Exibe a página de login com identidade visual
+    """
+    # CSS específico para login
+    st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Lato:wght@300;400;700&display=swap');
     
-    with st.form("login_form"):
-        col1, col2, col3 = st.columns([1, 2, 1])
-        
-        with col2:
-            username = st.text_input("👤 Usuário", placeholder="Digite seu usuário")
-            password = st.text_input("🔒 Senha", type="password", placeholder="Digite sua senha")
+    .login-container {
+        max-width: 400px;
+        margin: 0 auto;
+        padding: 2rem;
+        background: linear-gradient(135deg, #ffffff, #F1FAEE);
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(29, 53, 87, 0.1);
+        text-align: center;
+        margin-top: 5rem;
+    }
+    
+    .login-header {
+        margin-bottom: 2rem;
+    }
+    
+    .login-mascot {
+        font-size: 5rem;
+        animation: pulse 2s infinite;
+        margin-bottom: 1rem;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+    }
+    
+    .login-title {
+        font-family: 'Poppins', sans-serif;
+        font-weight: 700;
+        font-size: 2.5rem;
+        color: #1D3557;
+        margin: 0;
+        background: linear-gradient(45deg, #1D3557, #E63946);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+                text-align: center;
+        margin-top: 0.5rem;
+                animation: fadeIn 1s ease-in-out;
+    }
+    
+    .login-subtitle {
+        font-family: 'Lato', sans-serif;
+        color: #457B9D;
+        font-size: 1.1rem;
+        margin-top: 0.5rem;
+    }
+    
+    .login-form {
+        margin-top: 2rem;
+    }
+    
+    .stTextInput > div > div > input {
+        border-radius: 15px !important;
+        border: 2px solid #F1FAEE !important;
+        font-family: 'Lato', sans-serif !important;
+        padding: 1rem !important;
+        font-size: 1rem !important;
+        transition: all 0.3s ease !important;
+    }
+    
+    .stTextInput > div > div > input:focus {
+        border-color: #E63946 !important;
+        box-shadow: 0 0 15px rgba(230, 57, 70, 0.2) !important;
+    }
+    
+    .login-button {
+        background: linear-gradient(45deg, #E63946, #ff4757) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 25px !important;
+        font-family: 'Poppins', sans-serif !important;
+        font-weight: 600 !important;
+        padding: 0.75rem 3rem !important;
+        font-size: 1.1rem !important;
+        margin-top: 1rem !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 6px 20px rgba(230, 57, 70, 0.3) !important;
+        width: 100% !important;
+    }
+    
+    .login-button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 25px rgba(230, 57, 70, 0.4) !important;
+    }
+    
+    .login-footer {
+        margin-top: 2rem;
+        font-family: 'Lato', sans-serif;
+        color: #457B9D;
+        font-size: 0.9rem;
+    }
+    
+    .demo-info {
+        background: linear-gradient(135deg, #F1FAEE, white);
+        padding: 1.5rem;
+        border-radius: 15px;
+        margin-top: 2rem;
+        border: 1px solid rgba(230, 57, 70, 0.1);
+    }
+    
+    .demo-info h4 {
+        color: #1D3557;
+        font-family: 'Poppins', sans-serif;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+    
+    .demo-credentials {
+        background: white;
+        padding: 1rem;
+        border-radius: 10px;
+        border-left: 4px solid #E63946;
+        margin: 0.5rem 0;
+        font-family: 'Lato', sans-serif;
+        color: #1D3557;
+        font-size: 0.9rem;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Container principal de login
+    st.markdown("""
+    <div class="">
+        <h1 class="login-title">LoveNFSE</h1>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Formulário de login centralizado
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col2:
+        with st.form("login_form", clear_on_submit=False):
+            st.markdown("### Acessao ao Sistema")
             
-            submitted = st.form_submit_button("🚀 Entrar", use_container_width=True)
+            username = st.text_input(
+                "👤 Usuário:",
+                placeholder="Digite seu usuário",
+                key="login_username"
+            )
+            
+            password = st.text_input(
+                "🔑 Senha:",
+                type="password",
+                placeholder="Digite sua senha",
+                key="login_password"
+            )
+            
+            submitted = st.form_submit_button(
+                "🚀 ENTRAR NO SISTEMA",
+                use_container_width=True
+            )
             
             if submitted:
-                if not username or not password:
-                    st.error("Por favor, preencha todos os campos.")
-                else:
-                    with st.spinner("Autenticando..."):
+                if username and password:
+                    with st.spinner("🔍 Verificando credenciais..."):
                         success, message = StreamlitAuthManager.login(username, password)
                     
                     if success:
-                        st.success(message)
+                        st.success(f"✅ {message}")
+                        st.balloons()
+                        time.sleep(1)
                         st.rerun()
                     else:
-                        st.error(message)
+                        st.error(f"❌ {message}")
+                else:
+                    st.warning("⚠️ Por favor, preencha usuário e senha.")
+        
+        # Informações de demonstração
+        # st.markdown("""
+        # <div class="demo-info">
+        #     <h4>🎯 Demonstração</h4>
+        #     <div class="demo-credentials">
+        #         <strong>Usuário:</strong> admin<br>
+        #         <strong>Senha:</strong> sua_senha_admin
+        #     </div>
+        #     <div style="font-size: 0.8rem; color: #457B9D; margin-top: 1rem;">
+        #         💡 Use as credenciais acima para testar o sistema
+        #     </div>
+        # </div>
+        # """, unsafe_allow_html=True)
     
-    # Informações adicionais
-    with st.expander("ℹ️ Informações de Acesso"):
-        st.markdown("""
-        **Sistema de Autenticação JWT**
-        
-        - Tokens de acesso válidos por 24 horas
-        - Renovação automática quando necessário
-        - Logout automático em caso de token inválido
-        
-        **Problemas de Acesso?**
-        - Verifique suas credenciais
-        - Entre em contato com o administrador do sistema
-        """)
+    # Footer da página de login
+    st.markdown("""
+    <div style="text-align: center; margin-top: 3rem; color: #457B9D; font-family: 'Lato', sans-serif;">
+        <div style="font-size: 1.5rem; margin-bottom: 0.5rem;"></div>
+        <div>Transformando processos em experiências incríveis</div>
+        <div style="font-size: 0.8rem; margin-top: 0.5rem; opacity: 0.7;">
+            © 2025 NFS-e LOVE • Feito com amor e tecnologia
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 def show_user_info():
