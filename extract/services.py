@@ -559,10 +559,10 @@ class XMLGenerator:
         # ValorServicos
         valor_servicos = cls.validar_dados_criticos(dados, "valorServicos")
         if not valor_servicos:
-            valor_servicos_none = "0.00"  # Define um valor padrão se não for encontrado
-            etree.SubElement(valores_servico, "ValorServicos").text = valor_servicos_none
+            etree.SubElement(valores_servico, "ValorServicos").text = base_calculo_formatada
         else:
-            etree.SubElement(valores_servico, "ValorServicos").text = valor_servicos        
+            valor_servicos_none = "0.00"  # Define um valor padrão se não for encontrado
+            etree.SubElement(valores_servico, "ValorServicos").text = valor_servicos_none        
 
         # ValorDeducoes
         valor_deducoes = cls.validar_dados_criticos(dados, "deducoes")
@@ -722,7 +722,7 @@ class XMLGenerator:
                 valor_servicos_dec = cls.normalize_valor(dados.get("valorServicos", "0.00"))
                 logger.info(f"Valor serviços original: {dados.get('valorServicos', '0.00')}")
                 logger.info(f"Valor serviços normalizado: {valor_servicos_dec}")
-                if valor_servicos_dec is None:
+                if not valor_servicos_dec:
                     valor_servicos_dec = base_calculo_formatada
                     logger.info(f"Valor serviços dec não encontrado, usando base de cálculo: {valor_servicos_dec}")
 
