@@ -133,8 +133,9 @@ class DocumentAIProcessor:
         "cidade_nfs": "cidadeNfs",
         "cod_verificacao": "codigoVerificacao",
         "cofins": "cofins",
-        "cpf_cnpj": "cpfCnpjPrestador",        # exemplo para prestador
+        "cpf_cnpj_prestador": "cpfCnpjPrestador",        # exemplo para prestador
         "cpf_cnpj_tomador": "cpfCnpjTomador",    # exemplo para tomador
+        "cnae": "codigoCnae",
         "credito": "credito",
         "csll": "csll",
         "data_da_emissao": "dataEmissao",
@@ -460,6 +461,7 @@ class XMLGenerator:
         id_prestador = etree.SubElement(prestador_servico, "IdentificacaoPrestador")
         cpf_cnpj_prestador = etree.SubElement(id_prestador, "CpfCnpj")
         cpf_cnpj_prestador_text = dados.get("cpfCnpjPrestador", "")
+        
         # Remove caracteres não numéricos
         cpf_cnpj_prestador_clean = re.sub(r'\D', '', cpf_cnpj_prestador_text)
         # Verifica se é CPF ou CNPJ
@@ -558,11 +560,20 @@ class XMLGenerator:
         
         # ValorServicos
         valor_servicos = cls.validar_dados_criticos(dados, "valorServicos")
-        if not valor_servicos:
-            etree.SubElement(valores_servico, "ValorServicos").text = base_calculo_formatada
+
+        if valor_servicos:
+            valor_final = valor_servicos
         else:
-            valor_servicos_none = "0.00"  # Define um valor padrão se não for encontrado
-            etree.SubElement(valores_servico, "ValorServicos").text = valor_servicos_none        
+            if base_calculo_formatada:
+                valor_final = base_calculo_formatada
+            else:
+                valor_final = "0.00"
+
+            logger.warning(f"[AVISO] ValorServicos não informado para a nota {dados.get('numero-nota-fiscal', '')} | "
+                        f"Prestador: {dados.get('razaoSocialPrestador', '')}")
+
+        etree.SubElement(valores_servico, "ValorServicos").text = valor_final
+
 
         # ValorDeducoes
         valor_deducoes = cls.validar_dados_criticos(dados, "deducoes")
@@ -609,23 +620,45 @@ class XMLGenerator:
         )        
         etree.SubElement(servico, "IssRetido").text = iss_retido_formatado
 
-        item_lista_servico = str(dados.get("item_lista_servico", "0000")).strip()
-        print(f"Item Lista Serviço original: {item_lista_servico}")
-        # Extrai apenas o código numérico do início (ex: "16.02" de "16.02-Outros serviços...")
-        match = re.match(r'^(\d{2}\.\d{2})', item_lista_servico)
-        item_lista_servico = match.group(1) if match else item_lista_servico.strip()
-        print(f"Item Lista Serviço formatado: {item_lista_servico}")
-        # Adiciona o item_lista_servico ao XML        
+        
+               
+       # Extração e formatação do Código CNAE
+        codigo_cnae_raw = dados.get("codigoCnae", "")
+        codigo_cnae = re.sub(r'[^0-9]', '', codigo_cnae_raw).strip()
+
+        # Define o valor no XML
+
+        # Logs
+        if codigo_cnae:
+            logger.info(f"Código CNAE extraído e formatado: {codigo_cnae}")
+            # etree.SubElement(servico, "CodigoCnae").text = codigo_cnae
+        else:
+            logger.warning(
+                f"Código CNAE não informado ou inválido para a nota {dados.get('numero-nota-fiscal', '')} |"
+                f" Prestador: {dados.get('razaoSocialPrestador', '')}"
+            )
+
+        print(f"Código CNAE formatado: {codigo_cnae}")
+
+
+        item_lista_servico_raw = str(dados.get("item_lista_servico", "")).strip()
+        print(f"Item Lista Serviço original: {item_lista_servico_raw}")
+
+        # Extrai apenas o código numérico no formato XX.XX (ex.: "16.02")
+        match = re.match(r'^(\d{2}\.\d{2})', item_lista_servico_raw)
+        item_lista_servico = match.group(1) if match else item_lista_servico_raw
+
+        # Se não encontrar nada, tenta usar o código CNAE
+        if not item_lista_servico or item_lista_servico == "":
+            item_lista_servico = codigo_cnae or "0000"
+
+        print(f"Item Lista Serviço final: {item_lista_servico}")
+
+        # Adiciona ao XML
         etree.SubElement(servico, "ItemListaServico").text = item_lista_servico
         
         
-        codigo_cnae = etree.SubElement(servico, "CodigoCnae").text = re.sub(r'[^\w\s]', '', dados.get("codigo_cnae", ""))
-        # Verifica se o código CNAE está vazio
-        if not codigo_cnae:
-            logger.warning(
-                f"Código CNAE não informado para a nota {dados.get('numero-nota-fiscal', '')} |"
-                f" Prestador: {dados.get('razaoSocialPrestador', '')}"
-            )
+        # Discriminação do serviço
 
         discriminacao = etree.SubElement(servico, "Discriminacao").text = dados.get("Discriminacao", "")
         # Verifica se a discriminação está vazia
