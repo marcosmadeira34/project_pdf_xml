@@ -269,7 +269,7 @@ class XMLGenerator:
             return ""
 
         try:
-            valor_formatado = valor.replace(',', '.').replace(' ', '')
+            valor_formatado = valor.replace(',', '.').replace(' ', '').replace('R$', '').replace('R$', '').replace(' ', '')
             valor_formatado = "{:.2f}".format(float(valor_formatado))
             return valor_formatado
         except ValueError:
@@ -392,9 +392,13 @@ class XMLGenerator:
             valor = valor.replace('.', '').replace(',', '.')
             # Remove qualquer caractere não numérico restante, exceto ponto e sinal negativo
             valor = re.sub(r'[^\d.-]', '', valor)
+            # Se valor for vazio depois da limpeza, usa default
+            if not valor:
+                valor = default
             return Decimal(valor)
         except Exception:
             return Decimal(default)
+        
     
     @classmethod
     def gerar_xml_abrasf(cls, dados: Dict) -> str:
@@ -463,7 +467,7 @@ class XMLGenerator:
 
         etree.SubElement(valores_nfse, "Aliquota").text = str(aliquota_float)
 
-        valor_iss = str(dados.get("valorIss", "0,00"))
+        valor_iss = str(dados.get("valorIss", "0.00"))
         # Remove o ponto de milhar e substitui a vírgula por ponto
         valor_iss_formatado = valor_iss.replace('.', '').replace(',', '.')
         etree.SubElement(valores_nfse, "ValorIss").text = valor_iss_formatado
