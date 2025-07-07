@@ -245,38 +245,46 @@ class XMLGenerator:
 
 
 
+
+    
+    @staticmethod
+    def normalize_valor(valor, default="0.00"):
+        """
+        Normaliza valores financeiros para Decimal, removendo símbolos e tratando erros.
+        """
+        try:
+            valor = str(valor).strip().replace("R$", "").replace(" ", "")
+            # Remove separador de milhar (ponto) e troca vírgula por ponto
+            valor = valor.replace('.', '').replace(',', '.')
+            # Remove qualquer caractere não numérico restante, exceto ponto e sinal negativo
+            valor = re.sub(r'[^\d.-]', '', valor)
+            # Se valor for vazio depois da limpeza, usa default
+            if not valor:
+                valor = default
+            return Decimal(valor)
+        except Exception:
+            return Decimal(default)
+
     @staticmethod
     def validar_dados_criticos(dados, campo_nome: str, numero_nf_key='numero-nota-fiscal',
-                               prestador_key="razaoSocialPrestador"):
+                            prestador_key="razaoSocialPrestador"):
         """
         Valida e formata um valor monetário extraído do dicionário `dados`.
         Emite alertas caso esteja ausente ou inválido.
-
-        :param dados: dicionário com os dados da nota fiscal
-        :param campo_nome: nome da chave no dicionário que contém o valor
-        :param numero_nf_key: chave que contém o número da nota fiscal (para log)
-        :param prestador_key: chave que contém o nome do prestador (para log)
-        :return: valor formatado como string (ex: '123.45') ou string vazia se inválido
         """
-        valor = str(dados.get(campo_nome, "0.00")).strip()
+        valor_original = dados.get(campo_nome, "0.00")
         numero_nf = dados.get(numero_nf_key, "0.00")
         prestador = dados.get(prestador_key, "0.00")
 
-        if not valor:
+        valor_formatado = XMLGenerator.normalize_valor(valor_original)
+
+        if valor_formatado == "0.00" and str(valor_original).strip() in ("", "0.00", None):
             logger.warning(
-                f"[AVISO] Campo '{campo_nome}' ausente na nota {numero_nf} | Prestador: {prestador}"
+                f"[AVISO] Campo '{campo_nome}' ausente ou inválido na nota {numero_nf} | Prestador: {prestador}"
             )
             return ""
 
-        try:
-            valor_formatado = valor.replace(',', '.').replace(' ', '').replace('R$', '').replace('R$', '').replace(' ', '')
-            valor_formatado = "{:.2f}".format(float(valor_formatado))
-            return valor_formatado
-        except ValueError:
-            logger.warning(
-                f"[ERRO] Valor inválido para '{campo_nome}': '{valor}' na nota {numero_nf} | Prestador: {prestador}"
-            )
-            return ""
+        return valor_formatado
         
 
     @staticmethod
@@ -381,23 +389,7 @@ class XMLGenerator:
         return ""
     
 
-    @staticmethod
-    def normalize_valor(valor, default="0.00"):
-        """
-        Normaliza valores financeiros para Decimal, removendo símbolos e tratando erros.
-        """
-        try:
-            valor = str(valor).strip().replace("R$", "").replace(" ", "")
-            # Remove separador de milhar (ponto) e troca vírgula por ponto
-            valor = valor.replace('.', '').replace(',', '.')
-            # Remove qualquer caractere não numérico restante, exceto ponto e sinal negativo
-            valor = re.sub(r'[^\d.-]', '', valor)
-            # Se valor for vazio depois da limpeza, usa default
-            if not valor:
-                valor = default
-            return Decimal(valor)
-        except Exception:
-            return Decimal(default)
+
         
     
     @classmethod
@@ -566,44 +558,20 @@ class XMLGenerator:
         
         # ValorServicos
         valor_servicos = cls.validar_dados_criticos(dados, "valorServicos")
-
-        if valor_servicos:
-            valor_final = valor_servicos
-        else:
-            if base_calculo_formatada:
-                valor_final = base_calculo_formatada
-            else:
-                valor_final = "0.00"
-
-            logger.warning(f"[AVISO] ValorServicos não informado para a nota {dados.get('numero-nota-fiscal', '')} | "
-                        f"Prestador: {dados.get('razaoSocialPrestador', '')}")
-
+        valor_final = valor_servicos if valor_servicos else base_calculo_formatada or "0.00"
         etree.SubElement(valores_servico, "ValorServicos").text = valor_final
 
+        for campo, xml_tag in [
+            ("deducoes", "ValorDeducoes"),
+            ("impostoRenda", "ValorIr"),
+            ("valorIss", "ValorIss"),
+        ]:
 
-        # ValorDeducoes
-        valor_deducoes = cls.validar_dados_criticos(dados, "deducoes")
-        if valor_deducoes is None:
-            valor_deducoes_none = "0.00"
-            etree.SubElement(valores_servico, "ValorDeducoes").text = valor_deducoes_none
-        else:
-            etree.SubElement(valores_servico, "ValorDeducoes").text = valor_deducoes       
+            valor = cls.validar_dados_criticos(dados, campo)
+            valor_xml = valor if valor else "0.00"
+            etree.SubElement(valores_servico, xml_tag).text = valor_xml
+
         
-        # ValorIr
-        valor_ir = cls.validar_dados_criticos(dados, "impostoRenda")
-        if valor_ir is None:
-            valor_ir_none = "0.00"  # Define um valor padrão se não for encontrado        
-            etree.SubElement(valores_servico, "ValorIr").text = valor_ir_none
-        else:
-            etree.SubElement(valores_servico, "ValorIr").text = valor_ir
-
-        # ValorIss
-        valor_iss_servico = cls.validar_dados_criticos(dados, "valorIss")
-        if valor_iss_servico is None:
-            valor_iss_servico_none = "0.00"  # Define um valor padrão se não for encontrado        
-            etree.SubElement(valores_servico, "ValorIss").text = valor_iss_servico_none
-        else:
-            etree.SubElement(valores_servico, "ValorIss").text = valor_iss_servico
 
 
         # Aliquota
