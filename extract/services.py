@@ -405,8 +405,22 @@ class XMLGenerator:
         nfse = etree.SubElement(root, "Nfse", versao="1.00")
         inf_nfse = etree.SubElement(nfse, "InfNfse", Id="")
 
-        # Adicionando os campos para 'InfNfse'
-        etree.SubElement(inf_nfse, "Numero").text = dados.get("numero-nota-fiscal", "")
+        numero_raw = dados.get("numero-nota-fiscal", "")
+        linhas = numero_raw.splitlines()
+
+        if len(linhas) >= 2:
+            numero = linhas[1].strip()
+        elif len(linhas) == 1:
+            numero = linhas[0].strip()
+        else:
+            numero = ""
+
+        # Remove tudo que não for letra (a-zA-Z) ou número (0-9)
+        numero_limpo = re.sub(r'[^a-zA-Z0-9]', '', numero)
+
+        etree.SubElement(inf_nfse, "Numero").text = numero_limpo
+        
+        
         codigo_verificacao = dados.get("codigoVerificacao", "")
         codigo_verificacao_clean = re.sub(r'[^a-zA-Z0-9]', '', codigo_verificacao)
 
