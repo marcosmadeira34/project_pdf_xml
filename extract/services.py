@@ -107,6 +107,7 @@ class DocumentAIProcessor:
 
         try:
             result = self.client.process_document(request=request)
+            logger.info(f"Documento processado com sucesso: {result.name}")
             document_obj = result.document
             # print(f"Aqui está o resultado: {document_obj.text}")
             return json.loads(MessageToJson(document_obj._pb))
