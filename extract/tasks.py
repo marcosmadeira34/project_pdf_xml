@@ -8,6 +8,12 @@ from .services import XMLGenerator, ExcelGenerator
 from .models import ArquivoZip
 import logging
 import PyPDF2
+# Exemplo dentro da sua view (ou task)
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+import requests
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +98,19 @@ def processar_pdfs(self, files_data):
         logger.info(f"ZIP salvo no banco com ID: {arquivo_zip.id}")
         logger.info(f"Nome do arquivo: {zip_filename}")
         logger.info(f"Arquivos processados: {list(arquivos_resultado.keys())}")
+
+        # Notifica o usuário
+#         channel_layer = get_channel_layer()
+#         async_to_sync(channel_layer.group_send)(
+#             f"user_{requests.user.id}",
+#             {
+#                 "type": "notify",
+#                 "message": {
+#                     "title": "Processamento Concluído!",
+#                     "detail": f"Seus arquivos estão prontos para download (Task ID: {arquivo_zip.id})."
+#                 }
+#             }
+# )
 
         # Retorna resultado estruturado
         return {
