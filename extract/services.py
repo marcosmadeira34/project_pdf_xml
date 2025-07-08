@@ -107,7 +107,7 @@ class DocumentAIProcessor:
 
         try:
             result = self.client.process_document(request=request)
-            logger.info(f"Documento processado com sucesso: {result.name}")
+            # logger.info(f"Documento processado com sucesso: {result.name}")
             document_obj = result.document
             # print(f"Aqui está o resultado: {document_obj.text}")
             return json.loads(MessageToJson(document_obj._pb))
@@ -339,8 +339,8 @@ class XMLGenerator:
         Busca o código IBGE com base no nome e UF, usando o dicionário carregado no settings.
         Funciona mesmo que nome_municipio ou uf venham como lista (acidentalmente).
         """
-        print(f"[DEBUG] municipioPrestador bruto: {nome_municipio}")
-        print(f"[DEBUG] ufPrestador bruto: {uf}")
+        # print(f"[DEBUG] municipioPrestador bruto: {nome_municipio}")
+        # print(f"[DEBUG] ufPrestador bruto: {uf}")
         
         # Corrige se os campos vierem como listas (por exemplo: ["PARNAMIRIM"])
         if isinstance(nome_municipio, list):
@@ -364,9 +364,9 @@ class XMLGenerator:
 
         chave_exata = f"{nome_normalizado}-{uf_normalizado}"
 
-        print(f"[DEBUG] municipioPrestador normalizado: {nome_normalizado}")
-        print(f"[DEBUG] ufPrestador normalizado: {uf_normalizado}")
-        print(f"[DEBUG] chave_exata formada: {chave_exata}")
+        # print(f"[DEBUG] municipioPrestador normalizado: {nome_normalizado}")
+        # print(f"[DEBUG] ufPrestador normalizado: {uf_normalizado}")
+        # print(f"[DEBUG] chave_exata formada: {chave_exata}")
 
         # Busca exata
         if chave_exata in cidades_ibge.CIDADES_IBGE:
@@ -744,7 +744,7 @@ class XMLGenerator:
                 logger.info(f"Valor serviços original: {dados.get('valorServicos', '0.00')}")
                 logger.info(f"Valor serviços normalizado: {valor_servicos_dec}")
                 if not valor_servicos_dec:
-                    valor_servicos_dec = base_calculo_formatada
+                    valor_servicos_dec = cls.normalize_valor(base_calculo_formatada)
                     logger.info(f"Valor serviços dec não encontrado, usando base de cálculo: {valor_servicos_dec}")
 
                 valor_iss_dec = cls.normalize_valor(dados.get("valorIss", "0.00"))

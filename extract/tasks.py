@@ -72,10 +72,10 @@ def processar_pdfs(self, files_data):
                     
                     # Adiciona XML de erro
                     error_xml = f'''<?xml version="1.0" encoding="UTF-8"?>
-<Erro>
-    <Arquivo>{file_name}</Arquivo>
-    <Mensagem>{str(e)}</Mensagem>
-</Erro>'''
+                                    <Erro>
+                                        <Arquivo>{file_name}</Arquivo>
+                                        <Mensagem>{str(e)}</Mensagem>
+                                    </Erro>'''
                     arquivos_resultado[file_name] = error_xml
                     zip_file.writestr(file_name.replace('.pdf', '_ERROR.xml'), error_xml.encode('utf-8'))
 
