@@ -98,27 +98,27 @@ class UploadEProcessarPDFView(View):
             logger.info(f"Required credits: {required_credits}")
             logger.info(f"User credits: {user_credits.balance}")
             
-            # if not user_credits.has_credits(required_credits):
-            #     return JsonResponse({
-            #         'error': 'Créditos insuficientes',
-            #         'message': f'Você precisa de {required_credits} crédito(s) para processar {len(files)} arquivo(s)',
-            #         'current_balance': user_credits.balance,
-            #         'required_credits': required_credits
-            #     }, status=402)  # 402 Payment Required
+            if not user_credits.has_credits(required_credits):
+                return JsonResponse({
+                    'error': 'Créditos insuficientes',
+                    'message': f'Você precisa de {required_credits} crédito(s) para processar {len(files)} arquivo(s)',
+                    'current_balance': user_credits.balance,
+                    'required_credits': required_credits
+                }, status=402)  # 402 Payment Required
             
-            # # CONSOME OS CRÉDITOS ANTES DE PROCESSAR
-            # success = user_credits.use_credits(
-            #     required_credits, 
-            #     f"Conversão de {required_credits} PDF(s)"
-            # )
+            # CONSOME OS CRÉDITOS ANTES DE PROCESSAR
+            success = user_credits.use_credits(
+                required_credits, 
+                f"Conversão de {required_credits} PDF(s)"
+            )
             
-            # if not success:
-            #     return JsonResponse({
-            #         'error': 'Erro ao consumir créditos',
-            #         'message': 'Houve um erro ao descontar os créditos'
-            #     }, status=500)
+            if not success:
+                return JsonResponse({
+                    'error': 'Erro ao consumir créditos',
+                    'message': 'Houve um erro ao descontar os créditos'
+                }, status=500)
             
-            # logger.info(f"Credits consumed successfully. New balance: {user_credits.balance}")
+            logger.info(f"Credits consumed successfully. New balance: {user_credits.balance}")
             
             # Agora processa os arquivos
             merge_id = uuid.uuid4()
@@ -172,22 +172,22 @@ class UploadEProcessarPDFView(View):
             logger.error(f'Erro em UploadEProcessarPDFView: {str(e)}', exc_info=True)
             
             # Se houver erro APÓS consumir créditos, reembolsa
-            # try:
-            #     if 'required_credits' in locals() and 'success' in locals() and success:
-            #         # Reembolsa os créditos
-            #         user_credits.add_credits(
-            #             required_credits,
-            #             f"Reembolso - Erro no processamento: {str(e)}"
-            #         )
-            #         logger.info(f"Credits refunded: {required_credits}")
-            # except Exception as refund_error:
-            #     logger.error(f"Error during refund: {str(refund_error)}")
-            #     pass  # Evita erro duplo
+            try:
+                if 'required_credits' in locals() and 'success' in locals() and success:
+                    # Reembolsa os créditos
+                    user_credits.add_credits(
+                        required_credits,
+                        f"Reembolso - Erro no processamento: {str(e)}"
+                    )
+                    logger.info(f"Credits refunded: {required_credits}")
+            except Exception as refund_error:
+                logger.error(f"Error during refund: {str(refund_error)}")
+                pass  # Evita erro duplo
             
-            # return JsonResponse({
-            #     'error': f'Erro no processamento: {str(e)}',
-            #     'message': 'Créditos reembolsados devido ao erro'
-            # }, status=500)
+            return JsonResponse({
+                'error': f'Erro no processamento: {str(e)}',
+                'message': 'Créditos reembolsados devido ao erro'
+            }, status=500)
 
 # --- View para Verificar o Status da Tarefa Celery (API) ---
 @method_decorator(csrf_exempt, name='dispatch')
@@ -351,11 +351,3 @@ class SendXMLToExternalAPIView(View):
         
 
 # --- View para a Página Inicial (Home) ---
-def home_view(request):
-    """
-    Exibe a página inicial com informações sobre o sistema.
-    """
-    return render(request, "homepage.html", {
-        "title": "Bem-vindo ao Sistema de Extração de NFSe",
-        "description": "Este sistema permite o upload e processamento de arquivos PDF para extração de NFSe."
-    })
