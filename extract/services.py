@@ -244,7 +244,16 @@ class XMLGenerator:
             elem.text = text
 
 
-
+    @staticmethod
+    def to_decimal_str(valor, default="0.00"):
+        """
+        Garante que o valor seja uma string decimal com duas casas decimais.
+        Aceita Decimal, float, int ou string numérica.
+        """
+        try:
+            return "{:.2f}".format(Decimal(valor))
+        except Exception:
+            return default
 
     
     @staticmethod
@@ -506,6 +515,7 @@ class XMLGenerator:
         etree.SubElement(endereco_prestador, "CodigoMunicipio").text = codigo_municipio_prestador
         
         etree.SubElement(endereco_prestador, "CodigoPais").text = str(dados.get("codigoPais", "1058"))
+        
         cep_prestador = dados.get("cepPrestador", "")
         # Remove caracteres não numéricos do CEP (ex: 68825-001 -> 68825001)
         cep_prestador_clean = re.sub(r'[^0-9]', '', cep_prestador)
@@ -558,18 +568,21 @@ class XMLGenerator:
         
         # ValorServicos
         valor_servicos = cls.validar_dados_criticos(dados, "valorServicos")
-        valor_final = valor_servicos if valor_servicos else base_calculo_formatada or "0.00"
-        etree.SubElement(valores_servico, "ValorServicos").text = valor_final
+        if valor_servicos:
+            valor_final = valor_servicos
+        else:
+            valor_final = cls.to_decimal_str(base_calculo_formatada)
+
+        etree.SubElement(valores_servico, "ValorServicos").text = str(valor_final)
 
         for campo, xml_tag in [
             ("deducoes", "ValorDeducoes"),
             ("impostoRenda", "ValorIr"),
             ("valorIss", "ValorIss"),
         ]:
-
             valor = cls.validar_dados_criticos(dados, campo)
             valor_xml = valor if valor else "0.00"
-            etree.SubElement(valores_servico, xml_tag).text = valor_xml
+            etree.SubElement(valores_servico, xml_tag).text = str(valor_xml)
 
         
 
@@ -708,10 +721,10 @@ class XMLGenerator:
         codigo_pais_tomador = etree.SubElement(endereco_tomador, "CodigoPais")
         codigo_pais_tomador.text = str(dados.get("codigoPais", "1058"))
 
+        cep_tomador_text = dados.get("cepTomador", "")
+        cep_tomador_text = re.sub(r'[^0-9]', '', cep_tomador_text)  # Remove caracteres não numéricos
+        etree.SubElement(endereco_tomador, "Cep").text = cep_tomador_text
         
-        cep_tomador = etree.SubElement(endereco_tomador, "Cep")
-        cep_tomador.text = dados.get("cepTomador", "")
-
         contato_tomador = etree.SubElement(tomador_servico, "Contato")
         telefone_tomador = etree.SubElement(contato_tomador, "Telefone")
         telefone_tomador.text = dados.get("telefoneTomador", "")
