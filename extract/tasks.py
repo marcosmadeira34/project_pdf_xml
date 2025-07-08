@@ -8,10 +8,7 @@ from .services import XMLGenerator, ExcelGenerator
 from .models import ArquivoZip
 import logging
 import PyPDF2
-# Exemplo dentro da sua view (ou task)
-from channels.layers import get_channel_layer
-from asgiref.sync import async_to_sync
-import requests
+
 
 
 
