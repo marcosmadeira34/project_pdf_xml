@@ -13,6 +13,9 @@ import base64
 import requests
 import io
 import zipfile
+import asyncio
+import websockets
+import threading
 
 # --- Importações do sistema de autenticação ---
 from streamlit_auth import StreamlitAuthManager, require_auth, show_login_page
@@ -41,291 +44,142 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- CSS Customizado com Identidade Visual ---
+
+
+
+
+# --- CSS Customizado com Identidade Visual LoveNFSE ---
 def load_custom_css():
     st.markdown("""
     <style>
-    /* Importar fontes do Google */
-    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Lato:wght@300;400;700&display=swap');
-    
-    /* Paleta de cores */
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+
     :root {
-        --love-red: #E63946;
-        --professional-blue: #1D3557;
-        --warm-beige: #F1FAEE;
-        --accent-blue: #457B9D;
-        --success-green: #2D7D32;
-        --warning-orange: #F57C00;
+        --pure-white: #FFFFFF;
+        --electric-blue: #007BFF;
+        --light-gray-blue: #E8EAF6;
+        --medium-dark: #2C3E50;
+        --mint-green: #2ECC71;
     }
-    
-    /* Reset e base */
+
     .main {
-        background: linear-gradient(135deg, var(--warm-beige) 0%, #ffffff 100%);
-        font-family: 'Lato', sans-serif;
-    }
-    
-    /* Header principal */
-    .main-header {
-        background: linear-gradient(90deg, var(--professional-blue) 0%, var(--accent-blue) 100%);
-        padding: 2rem;
-        border-radius: 15px;
-        margin-bottom: 2rem;
-        box-shadow: 0 8px 32px rgba(29, 53, 87, 0.1);
-        text-align: center;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .main-header::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        right: -50%;
-        width: 200%;
-        height: 200%;
-        background: radial-gradient(circle, rgba(241, 250, 238, 0.1) 0%, transparent 70%);
-        animation: float 6s ease-in-out infinite;
-    }
-    
-    @keyframes float {
-        0%, 100% { transform: translateY(0px) rotate(0deg); }
-        50% { transform: translateY(-10px) rotate(2deg); }
-    }
-    
-    .main-header h1 {
+        background-color: var(--pure-white);
         font-family: 'Poppins', sans-serif;
+        color: var(--medium-dark);
+    }
+
+    .main-header {
+        background-color: var(--electric-blue);
+        padding: 2rem;
+        border-radius: 12px;
+        margin-bottom: 2rem;
+        box-shadow: 0 6px 16px rgba(0, 123, 255, 0.4);
+        text-align: center;
+        color: var(--pure-white);
+    }
+
+    .main-header h1 {
         font-weight: 700;
         font-size: 3rem;
-        color: white;
         margin: 0;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
-        position: relative;
-        z-index: 2;
     }
-    
+
     .main-header .subtitle {
-        font-family: 'Lato', sans-serif;
-        font-size: 1.2rem;
-        color: var(--warm-beige);
-        margin-top: 0.5rem;
-        position: relative;
-        z-index: 2;
+        font-size: 1.1rem;
+        color: #ffff;
     }
-    
-    /* Mascote */
-    .mascot {
-        font-size: 4rem;
-        
-        margin: 1rem 0;
-        position: relative;
-        z-index: 2;
-    }
-    
-    @keyframes bounce {
-        0%, 100% { transform: translateY(0px); }
-        50% { transform: translateY(-10px); }
-    }
-    
-    /* Títulos */
+
     h1, h2, h3 {
-        font-family: 'Poppins', sans-serif !important;
-        font-weight: 700 !important;
-        color: var(--professional-blue) !important;
+        color: var(--medium-dark);
     }
-    
-    h1 { font-size: 2.5rem !important; }
-    h2 { font-size: 2rem !important; }
-    h3 { font-size: 1.5rem !important; }
-    
-    /* Abas customizadas */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 10px;
-        background: white;
-        border-radius: 10px;
-        padding: 0.5rem;
-        box-shadow: 0 4px 16px rgba(29, 53, 87, 0.1);
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        background: var(--warm-beige);
-        border-radius: 8px;
-        font-family: 'Poppins', sans-serif;
-        font-weight: 600;
-        color: var(--professional-blue);
-        border: 2px solid transparent;
-        transition: all 0.3s ease;
-    }
-    
-    .stTabs [data-baseweb="tab"]:hover {
-        background: var(--love-red);
-        color: white;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(230, 57, 70, 0.3);
-    }
-    
-    .stTabs [aria-selected="true"] {
-        background: var(--love-red) !important;
-        color: white !important;
-        border-color: var(--professional-blue) !important;
-    }
-    
-    /* Botões customizados */
+
+    h1 { font-size: 2.5rem; }
+    h2 { font-size: 1.8rem; }
+    h3 { font-size: 1.4rem; }
+
     .stButton button {
-        background: linear-gradient(45deg, var(--love-red), #ff4757);
-        color: white;
+        background-color: var(--electric-blue);
+        color: var(--pure-white);
         border: none;
         border-radius: 25px;
-        font-family: 'Poppins', sans-serif;
         font-weight: 600;
         padding: 0.75rem 2rem;
+        box-shadow: 0 3px 8px rgba(0, 123, 255, 0.6);
         transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(230, 57, 70, 0.3);
     }
-    
+
     .stButton button:hover {
+        background-color: var(--mint-green);
+        color: var(--pure-white);
         transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(230, 57, 70, 0.4);
-        background: linear-gradient(45deg, #d12d3c, var(--love-red));
     }
-    
-    /* Botões secundários */
-    .secondary-button {
-        background: linear-gradient(45deg, var(--professional-blue), var(--accent-blue)) !important;
-        color: white !important;
-        border-radius: 20px !important;
-        font-family: 'Poppins', sans-serif !important;
-        font-weight: 500 !important;
-        box-shadow: 0 3px 10px rgba(29, 53, 87, 0.3) !important;
+
+    .stTabs [data-baseweb="tab-list"] {
+        background-color: var(--light-gray-blue);
+        border-radius: 10px;
+        padding: 0.5rem;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
     }
-    
-    /* Cards e containers */
+
+    .stTabs [data-baseweb="tab"] {
+        background-color: var(--pure-white);
+        border-radius: 8px;
+        font-weight: 600;
+        color: var(--medium-dark);
+    }
+
+    .stTabs [data-baseweb="tab"]:hover {
+        background-color: var(--electric-blue);
+        color: var(--pure-white);
+    }
+
+    .stTabs [aria-selected="true"] {
+        background-color: var(--mint-green);
+        color: var(--pure-white);
+    }
+
     .metric-card {
-        background: white;
+        background-color: var(--pure-white);
+        border-left: 4px solid var(--electric-blue);
         padding: 1.5rem;
         border-radius: 15px;
-        box-shadow: 0 4px 20px rgba(29, 53, 87, 0.1);
-        border-left: 4px solid var(--love-red);
-        margin: 1rem 0;
-        transition: transform 0.3s ease;
+        box-shadow: 0 4px 12px rgba(44, 62, 80, 0.1);
+        transition: all 0.3s ease;
     }
-    
+
     .metric-card:hover {
         transform: translateY(-5px);
-        box-shadow: 0 8px 30px rgba(29, 53, 87, 0.15);
+        box-shadow: 0 8px 20px rgba(46, 204, 113, 0.3);
     }
-    
-    .info-box {
-        background: linear-gradient(135deg, var(--warm-beige), white);
-        padding: 1.5rem;
-        border-radius: 12px;
-        border: 1px solid rgba(29, 53, 87, 0.1);
-        margin: 1rem 0;
+
+    .css-1d391kg {
+        background-color: var(--light-gray-blue);
     }
-    
-    /* Expanders customizados */
-    .streamlit-expanderHeader {
-        background: var(--warm-beige) !important;
-        border-radius: 10px !important;
-        font-family: 'Poppins', sans-serif !important;
-        font-weight: 600 !important;
-        color: var(--professional-blue) !important;
-    }
-    
-    /* File uploader */
+
     .stFileUploader > div > div {
-        background: var(--warm-beige);
-        border: 2px dashed var(--love-red);
+        background-color: var(--pure-white);
+        border: 2px dashed var(--electric-blue);
         border-radius: 15px;
         padding: 2rem;
-        text-align: center;
     }
-    
-    /* Progress bars */
+
     .stProgress .st-bo {
-        background: var(--love-red);
+        background-color: var(--electric-blue);
     }
-    
-    /* Selectbox e multiselect */
-    .stSelectbox > div > div {
-        background: white;
-        border: 2px solid var(--warm-beige);
+
+    .streamlit-expanderHeader {
+        background-color: var(--light-gray-blue);
         border-radius: 10px;
-        font-family: 'Lato', sans-serif;
+        font-weight: 600;
+        color: var(--medium-dark);
     }
-    
-    /* Dataframes */
-    .dataframe {
-        border-radius: 10px;
-        overflow: hidden;
-        box-shadow: 0 4px 15px rgba(29, 53, 87, 0.1);
-    }
-    
-    /* Sidebar */
-    .css-1d391kg {
-        background: linear-gradient(180deg, var(--professional-blue), var(--accent-blue));
-    }
-    
-    .sidebar .sidebar-content {
-        background: white;
-        border-radius: 15px;
-        margin: 1rem;
-        padding: 1rem;
-    }
-    
-    /* Mensagens de status */
-    .stSuccess {
-        background: linear-gradient(90deg, #4CAF50, #66BB6A);
-        color: white;
-        border-radius: 10px;
-        font-family: 'Lato', sans-serif;
-    }
-    
-    .stError {
-        background: linear-gradient(90deg, #F44336, #EF5350);
-        color: white;
-        border-radius: 10px;
-        font-family: 'Lato', sans-serif;
-    }
-    
-    .stWarning {
-        background: linear-gradient(90deg, #FF9800, #FFB74D);
-        color: white;
-        border-radius: 10px;
-        font-family: 'Lato', sans-serif;
-    }
-    
-    .stInfo {
-        background: linear-gradient(90deg, var(--accent-blue), #64B5F6);
-        color: white;
-        border-radius: 10px;
-        font-family: 'Lato', sans-serif;
-    }
-    
-    /* Ícones customizados */
-    .icon {
-        font-size: 1.5rem;
-        margin-right: 0.5rem;
-        vertical-align: middle;
-    }
-    
-    /* Animações de entrada */
-    .fade-in {
-        animation: fadeIn 0.8s ease-in;
-    }
-    
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    
-    /* Responsive */
+
     @media (max-width: 768px) {
-        .main-header h1 { font-size: 2rem !important; }
-        .main-header .subtitle { font-size: 1rem !important; }
-        .mascot { font-size: 3rem; }
+        .main-header h1 { font-size: 2rem; }
     }
     </style>
     """, unsafe_allow_html=True)
+
 
 # Aplicar CSS customizado
 load_custom_css()
@@ -335,13 +189,13 @@ def render_main_header():
     st.markdown("""
     <div class="main-header fade-in">
         <h1>LoveNFSE</h1>
-        <div class="subtitle">A ferramenta que faz você amar até a nota fiscal da prefeitura</div>
+        <div class="subtitle" style="font-size: 1.5rem;">A ferramenta que te faz amar a nota fiscal da prefeitura</div>
     </div>
     """, unsafe_allow_html=True)
 
 # --- Sidebar com Informações do Usuário ---
-def render_user_sidebar():
-    show_credits_sidebar()
+# def render_user_sidebar():
+#     show_credits_sidebar()
 
 # --- Cards de Métricas ---
 def render_metrics_cards():
@@ -404,7 +258,7 @@ if not StreamlitAuthManager.ensure_authenticated():
 
 # Se chegou até aqui, o usuário está autenticado
 render_main_header()
-render_user_sidebar()
+# render_user_sidebar()
 
 # --- Verifica se deve mostrar a loja de créditos ---
 if st.session_state.get('show_payment_details'):
@@ -459,8 +313,8 @@ def call_django_backend(endpoint: str, method: str = "POST",
     # Debug para verificar se o token está sendo enviado
     import logging
     logger = logging.getLogger(__name__)
-    logger.info(f"Calling {method} {url}")
-    logger.info(f"Headers: {headers}")
+    #logger.info(f"Calling {method} {url}")
+    #logger.info(f"Headers: {headers}")
 
     try:
         response = None
@@ -681,7 +535,7 @@ def merge_pdfs_and_download(merge_files: list, output_filename: str) -> None:
         st.success(f"Tarefa de merge iniciada! ID: {merge_task_id}")
 
         merge_status_placeholder = st.empty()
-        merge_status = "PENDING"
+        merge_status = "PENDING"  # Status inicial
         merge_polling_attempts = 0
         max_merge_polling_attempts = 60 # 5 minutos de espera max
 
@@ -897,12 +751,64 @@ def simulate_api_send(xml_path):
 
 
 
+# --- Função para Escutar Notificações em Tempo Real ---
+def listen_notifications():
+    async def run():
+        token = st.session_state.get("jwt_token", "")
+        print("🔍 Verificando token JWT:", token)
+        if not token:
+            print("⚠️ Token JWT não encontrado! Faça login antes.")
+            return
+
+        # uri = "wss://nfse-abrasf-project-633c01390d1d.herokuapp.com/ws/notifications/"
+        uri = "ws://http://127.0.0.1:8001/ws/notifications/"
+        headers = {
+            "Authorization": f"Bearer {token}"
+        }
+        async with websockets.connect(uri, extra_headers=headers) as websocket:
+            while True:
+                message = await websocket.recv()
+                print("🔔 Notificação recebida:", message)
+    asyncio.run(run())
+
+st.title("Dashboard")
+
+if "jwt_token" not in st.session_state:
+    with st.form("login_form"):
+        username = st.text_input("Usuário")
+        password = st.text_input("Senha", type="password")
+        submitted = st.form_submit_button("Entrar")
+
+        if submitted:
+            response = requests.post(
+                "http://127.0.0.1:8001/auth/login/",
+                json={"username": username, "password": password}
+            )
+            if response.status_code == 200:
+                token = response.json()["access"]
+                st.session_state["jwt_token"] = token
+                st.success("Login realizado com sucesso!")
+
+                # ✅ Agora sim, inicia o WebSocket APÓS o login
+                if "ws_thread_started" not in st.session_state:
+                    threading.Thread(target=listen_notifications, daemon=True).start()
+                    st.session_state["ws_thread_started"] = True
+            else:
+                st.error("Falha no login.")
+else:
+    st.info("Usuário já logado.")
+
+    # ✅ Se ainda não iniciou o WebSocket (caso reload ou refresh)
+    if "ws_thread_started" not in st.session_state:
+        threading.Thread(target=listen_notifications, daemon=True).start()
+        st.session_state["ws_thread_started"] = True
+
 # --- Inicialização de Estado da Sessão ---
 if 'uploaded_files_info' not in st.session_state:
     st.session_state.uploaded_files_info = []
 
 # --- Abas para Organização do Fluxo ---
-tab1, tab2, tab3, tab4 = st.tabs(["📥 Importar PDFs", "🔍 Revisar & Converter", "✉️ Enviar para API", "📊 Histórico"])
+tab1, tab2, tab3, tab4 = st.tabs(["1 - Importar PDFs", "2 - Revisar & Converter", "3 - Lançamento Automático", "📊 Histórico"])
 
 # --- TAB 1: Importar PDFs ---
 with tab1:
@@ -961,17 +867,17 @@ with tab1:
 
 # --- TAB 2: Processar & Converter ---
 with tab2:
-    st.markdown("""
-    <div class="fade-in">
-        <h2><span class="icon">🔄</span>Processar e Converter</h2>
-        <div class="info-box">
-            <p style="font-family: 'Lato', sans-serif; margin: 0;">
-                <strong>🚀 Nossa IA:</strong> Extrai dados automaticamente com 99.9% de precisão. 
-                Selecione os PDFs e deixe a mágica acontecer!
-            </p>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    # st.markdown("""
+    # <div class="fade-in">
+    #     <h2><span class="icon">🔄</span>Processar e Converter</h2>
+    #     <div class="info-box">
+    #         <p style="font-family: 'Lato', sans-serif; margin: 0;">
+    #             <strong>🚀 Nossa IA:</strong> Extrai dados automaticamente com 99.9% de precisão. 
+    #             Selecione os PDFs e deixe a mágica acontecer!
+    #         </p>
+    #     </div>
+    # </div>
+    # """, unsafe_allow_html=True)
 
     if not st.session_state.uploaded_files_info:
         st.info("Nenhum PDF carregado ainda. Volte para a aba 'Importar PDFs'.")
@@ -1066,16 +972,16 @@ with tab2:
                                 "remaining_credits": response.get("remaining_credits", 0)
                             }
                             
-                            st.success(f"""
-                            ✅ **Processamento Iniciado com Sucesso!**
+                            # st.success(f"""
+                            # ✅ **Processamento Iniciado com Sucesso!**
                             
-                            - **Arquivos enviados:** {len(selected_files)}
-                            - **Créditos consumidos:** {response.get('credits_used', len(selected_files))}
-                            - **Créditos restantes:** {response.get('remaining_credits', 0)}
-                            - **Task ID:** {task_id}
+                            # - **Arquivos enviados:** {len(selected_files)}
+                            # - **Créditos consumidos:** {response.get('credits_used', len(selected_files))}
+                            # - **Créditos restantes:** {response.get('remaining_credits', 0)}
+                            # - **Task ID:** {task_id}
                             
-                            ⏳ Aguarde o processamento ser concluído...
-                            """)
+                            # ⏳ Aguarde o processamento ser concluído...
+                            # """)
                             
                             st.rerun()
                         else:
@@ -1084,13 +990,13 @@ with tab2:
                         st.error("❌ Falha na comunicação com o backend para iniciar o processamento. Verifique logs.")
 
     # Seção de Status - SEMPRE EXIBIDA (fora dos if/else anteriores)
-    st.markdown("---")
-    st.subheader("Status dos PDFs Carregados:")
+    # st.markdown("---")
+    # st.subheader("Status dos PDFs Carregados:")
     
-    if not df_files.empty:
-        st.dataframe(df_files[['Nome do Arquivo', 'Status', 'XML Gerado', 'Status Envio']], use_container_width=True)
-    else:
-        st.info("Nenhum arquivo carregado ainda.")
+    # if not df_files.empty:
+    #     st.dataframe(df_files[['Nome do Arquivo', 'Status', 'XML Gerado', 'Status Envio']], use_container_width=True)
+    # else:
+    #     st.info("Nenhum arquivo carregado ainda.")
 
     # Verificação de status de tarefas em andamento
     if "task_status" in st.session_state and st.session_state.task_status:
@@ -1156,7 +1062,7 @@ with tab2:
                 del st.session_state.task_status
                 
             elif state in ["PENDING", "STARTED"]:
-                st.info(f"⏳ Status: {state} - Aguardando conclusão...")
+                st.info(f"⏳ Status: {state} - Processando arquivos...")
                 time.sleep(2)
                 st.rerun()
             else:
@@ -1179,8 +1085,8 @@ with tab2:
                     if xml_content.strip().startswith('<?xml') or xml_content.strip().startswith('<'):
                         
                         # Mostra preview do XML
-                        with st.expander(f"📄 Preview: {file_name}"):
-                            st.code(xml_content[:500] + "..." if len(xml_content) > 500 else xml_content, language="xml")
+                        # with st.expander(f"📄 Preview: {file_name}"):
+                        #     st.code(xml_content[:500] + "..." if len(xml_content) > 500 else xml_content, language="xml")
                         
                         # Botão de download
                         button_key = f"download_btn_{file_name}_{len(xml_content)}"
@@ -1223,7 +1129,7 @@ with tab3:
         <h2><span class="icon">🚀</span>Enviar para API</h2>
         <div class="info-box">
             <p style="font-family: 'Lato', sans-serif; margin: 0;">
-                <strong>🎯 Integração:</strong> Envie seus XMLs processados diretamente para o sistema externo. 
+                <strong>🎯 Integração:</strong> Envie seus XMLs processados automaticamente para o sistema Domínio Fiscal. 
                 Rápido, seguro e confiável!
             </p>
         </div>

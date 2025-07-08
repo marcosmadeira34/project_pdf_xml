@@ -185,7 +185,7 @@ class UploadEProcessarPDFView(View):
                 pass  # Evita erro duplo
             
             return JsonResponse({
-                'error': f'Erro no processamento: {str(e)}',
+                'error': f'Erro no processamento em uploadprocessarpdfview: {str(e)}',
                 'message': 'Créditos reembolsados devido ao erro'
             }, status=500)
 
