@@ -44,17 +44,17 @@ class JWTAuthenticationMiddleware:
                         logger.info(f"User authenticated: {user.username} (ID: {user.id})")
                         
                     except User.DoesNotExist:
-                        request.user = AnonymousUser()
+                        #request.user = AnonymousUser()
                         return JsonResponse({'error': 'Usuário não encontrado'}, status=401)
                 else:
-                    request.user = AnonymousUser()
+                    #request.user = AnonymousUser()
                     return JsonResponse({'error': 'Token inválido ou expirado'}, status=401)
             else:
-                request.user = AnonymousUser()
+                # request.user = AnonymousUser()
                 return JsonResponse({'error': 'Token de autenticação necessário'}, status=401)
-        else:
+        # else:
             # Para URLs que não precisam de auth, define AnonymousUser
-            request.user = AnonymousUser()
+            # request.user = AnonymousUser()
 
         response = self.get_response(request)
         return response

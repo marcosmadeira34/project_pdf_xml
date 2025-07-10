@@ -30,20 +30,27 @@ CIDADES_IBGE = {
     for m in municipios_raw
 }
 
+# Função limpar_texto (mantemos)
 def limpar_texto(texto):
-    """Limpa e normaliza o texto extraído"""
     texto = unicodedata.normalize("NFD", texto)
     texto = texto.encode("ascii", "ignore").decode("utf-8")
     texto = re.sub(r'[\n\r\t]', ' ', texto)
     texto = re.sub(r'[^a-zA-Z0-9\s-]', '', texto)
     texto = re.sub(r'\s+', ' ', texto)
-    return texto.upper().strip()
+    texto = texto.upper().strip()
 
-def extrair_municipio_uf(texto):
-    """Extrai automaticamente o município e UF do texto"""
-    padrao = r'([A-Z\s]+)[-\s]([A-Z]{2})'
-    match = re.search(padrao, texto)
+    match = re.search(r'([A-Z]{2})[-\s]+\1$', texto)
     if match:
+        texto = texto[:match.start()] + match.group(1)
+
+    return texto
+
+# Função extrair_municipio_uf (nova versão)
+def extrair_municipio_uf(texto):
+    padrao = r'([A-Z\s]+)[-\s]([A-Z]{2})'
+    matches = list(re.finditer(padrao, texto))
+    if matches:
+        match = matches[-1]  # Última ocorrência
         municipio = match.group(1).strip()
         uf = match.group(2).strip()
         return municipio, uf

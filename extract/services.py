@@ -161,7 +161,6 @@ class DocumentAIProcessor:
         "iss": "valorIss",   
         "item_lista_servico" : "item_lista_servico",  # ou itemListaServico, dependendo do seu mapeamento
         "local_prestacao": "localPrestacao",
-        "municipio_prestacao_servico": "municipioPrestacaoServico",
         "municipio_prestador": "municipioPrestador",
         "municipio_tomador": "municipioTomador",
         "nome_fantasia": "nomeFantasiaPrestador",
@@ -385,6 +384,23 @@ class XMLGenerator:
         return "1"
 
 
+    @staticmethod
+    def limpar_nome_municipio(texto, uf):
+        """Remove UF duplicada dentro do nome do município (campo sujo do OCR)."""
+        if not texto or not uf:
+            return texto  # Nada para limpar
+
+        texto = unicodedata.normalize("NFD", texto)
+        texto = texto.encode("ascii", "ignore").decode("utf-8")
+        texto = texto.upper().strip()
+
+        # Remove UF repetida no campo município
+        uf = uf.upper().strip()
+        padrao = rf'[-\s]{uf}[-\s]*{uf}$'  # Pega finais tipo "MG-MG"
+        texto = re.sub(padrao, f' {uf}', texto).strip()
+
+        return texto
+
 
     @staticmethod
     def obter_codigo_municipio(nome_municipio: str, uf: str) -> str:
@@ -415,6 +431,13 @@ class XMLGenerator:
         nome_normalizado = normalizar(nome_municipio)
         uf_normalizado = normalizar(uf)
 
+        # Detecta duplicação de UF no final do nome
+        if nome_normalizado.endswith(f" {uf_normalizado}"):
+            partes = nome_normalizado.rsplit(f" {uf_normalizado}", 1)
+            if partes[0].endswith(uf_normalizado):
+                logger.warning(f"[CodigoMunicipio] UF duplicada detectada em '{nome_normalizado}'")
+                nome_normalizado = partes[0]  # Remove a duplicação da UF
+
         chave_exata = f"{nome_normalizado}-{uf_normalizado}"
 
         # print(f"[DEBUG] municipioPrestador normalizado: {nome_normalizado}")
@@ -442,7 +465,7 @@ class XMLGenerator:
 
         # Sugestão por similaridade
         chaves_possiveis = list(cidades_ibge.CIDADES_IBGE.keys())
-        similares = get_close_matches(chave_exata, chaves_possiveis, n=1, cutoff=0.85)
+        similares = get_close_matches(chave_exata, chaves_possiveis, n=1, cutoff=0.80)
         if similares:
             sugestao = similares[0]
             logger.warning(f"[CodigoMunicipio] Sugestão de chave similar encontrada: '{sugestao}' para '{chave_exata}'")
@@ -562,11 +585,18 @@ class XMLGenerator:
         etree.SubElement(endereco_prestador, "Numero").text = str(dados.get("numeroPrestador"))
         etree.SubElement(endereco_prestador, "Bairro").text = dados.get("bairroPrestador")
         
+
         municipio_prestador = dados.get("municipioPrestador", "")
         uf_prestador = dados.get("ufPrestador", "")
-        ocr_codigo_municipio_prestador= f"{municipio_prestador}-{uf_prestador}"
-        codigo_municipio_prestador = buscar_codigo_municipio(ocr_codigo_municipio_prestador)        
+
+        municipio_prestador = cls.limpar_nome_municipio(municipio_prestador, uf_prestador)
+        print(f"Município do prestador após limpeza: {municipio_prestador}")
+
+        codigo_municipio_prestador = cls.obter_codigo_municipio(municipio_prestador, uf_prestador)
+        print(f"OCR Código Município Prestador: {codigo_municipio_prestador}")
         etree.SubElement(endereco_prestador, "CodigoMunicipio").text = codigo_municipio_prestador
+
+        # codigo_municipio_prestador = buscar_codigo_municipio(ocr_codigo_municipio_prestador)        
         
         # Codigo Pais
         etree.SubElement(endereco_prestador, "CodigoPais").text = str(dados.get("codigoPais", "1058"))
@@ -765,11 +795,21 @@ class XMLGenerator:
         bairro_tomador = etree.SubElement(endereco_tomador, "Bairro")
         bairro_tomador.text = dados.get("bairroTomador", "")
         
+        # Municipio e uf do tomador
         municipio_tomador = dados.get("municipioTomador", "")
         uf_tomador = dados.get("ufTomador", "")
-        ocr_codigo_municipio_tomador = f"{municipio_tomador}-{uf_tomador}"
-        codigo_municipio_tomador = buscar_codigo_municipio(ocr_codigo_municipio_tomador)
+
+        municipio_tomador = cls.limpar_nome_municipio(municipio_tomador, uf_tomador)
+        print(f"Município do tomador após limpeza: {municipio_tomador}")
+        codigo_municipio_tomador = cls.obter_codigo_municipio(municipio_tomador, uf_tomador)
+
+        print(f"OCR Código Município Tomador: {codigo_municipio_tomador}")
         etree.SubElement(endereco_tomador, "CodigoMunicipio").text = codigo_municipio_tomador
+
+        # uf_tomador = dados.get("ufTomador", "")
+        # ocr_codigo_municipio_tomador = f"{municipio_tomador}-{uf_tomador}"
+
+        # codigo_municipio_tomador = buscar_codigo_municipio(ocr_codigo_municipio_tomador)
 
         # uf_tomador = etree.SubElement(endereco_tomador, "Uf")
         # uf_tomador.text = dados.get("ufTomador", "")
