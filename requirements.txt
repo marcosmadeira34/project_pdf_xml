@@ -81,3 +81,4 @@ wrapt==1.17.2
 redis
 qrcode
 boto3
+rapidfuzz
