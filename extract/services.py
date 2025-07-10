@@ -17,6 +17,7 @@ import cidades_ibge
 import unicodedata
 from difflib import get_close_matches
 from decimal import Decimal, InvalidOperation
+from cidades_ibge import buscar_codigo_municipio
 
 
 
@@ -218,6 +219,58 @@ class CidadeIBGELoader:
                 cls._cidades = json.load(f)
         return cls._cidades
 
+
+
+
+    
+    
+
+class ExcelGenerator:
+    """Gera um arquivo Excel com os dados extraídos."""
+    
+    @staticmethod
+    def gerar_excel(dados: List[Dict], nome_arquivo: str = "dados_nfse.xlsx") -> str:
+        """Gera um arquivo Excel a partir de uma lista de dicionários."""
+        if not dados:
+            raise ValueError("Nenhum dado fornecido para gerar o Excel")
+
+        # Criação do DataFrame
+        df = pd.DataFrame(dados)
+
+        # Salvando o DataFrame em um arquivo Excel
+        df.to_excel(nome_arquivo, index=False)
+
+        print(f"Arquivo Excel gerado: {nome_arquivo}")
+        return nome_arquivo
+
+
+class ValidatorXSD:
+    """Valida um XML contra um esquema XSD."""
+    
+    @staticmethod
+    def validar_xml_abrasf(xml_str: str, caminho_xsd: str) -> Tuple[bool, list]:
+        """
+        Valida um XML gerado no padrão ABRASF contra o XSD oficial.
+        
+        :param xml_str: conteúdo do XML em string
+        :param caminho_xsd: caminho do arquivo .xsd
+        :return: (valido: bool, erros: list[str])
+        """
+        try:
+            xml_doc = etree.fromstring(xml_str.encode("utf-8"))
+            with open(caminho_xsd, "rb") as f:
+                xsd_doc = etree.XML(f.read())
+            schema = etree.XMLSchema(xsd_doc)
+
+            if schema.validate(xml_doc):
+                return True, []
+            else:
+                erros = [str(e.message) for e in schema.error_log]
+                return False, erros
+        except Exception as e:
+            logger.error(f"[XSD] Erro ao validar XML: {e}")
+            return False, [str(e)]
+        
 
 # define a classe para geração de XML
 class XMLGenerator:
@@ -509,12 +562,13 @@ class XMLGenerator:
         etree.SubElement(endereco_prestador, "Numero").text = str(dados.get("numeroPrestador"))
         etree.SubElement(endereco_prestador, "Bairro").text = dados.get("bairroPrestador")
         
-        codigo_municipio_prestador = cls.obter_codigo_municipio(
-            dados.get("municipioPrestador", ""),
-            dados.get("ufPrestador", "")
-        )        
+        municipio_prestador = dados.get("municipioPrestador", "")
+        uf_prestador = dados.get("ufPrestador", "")
+        ocr_codigo_municipio_prestador= f"{municipio_prestador}-{uf_prestador}"
+        codigo_municipio_prestador = buscar_codigo_municipio(ocr_codigo_municipio_prestador)        
         etree.SubElement(endereco_prestador, "CodigoMunicipio").text = codigo_municipio_prestador
         
+        # Codigo Pais
         etree.SubElement(endereco_prestador, "CodigoPais").text = str(dados.get("codigoPais", "1058"))
         
         cep_prestador = dados.get("cepPrestador", "")
@@ -710,14 +764,15 @@ class XMLGenerator:
         numero_tomador.text = dados.get("numeroTomador", "")
         bairro_tomador = etree.SubElement(endereco_tomador, "Bairro")
         bairro_tomador.text = dados.get("bairroTomador", "")
-        codigo_municipio_tomador = cls.obter_codigo_municipio(
-            dados.get("municipioTomador", ""),
-            dados.get("ufTomador", "")
-        )
+        
+        municipio_tomador = dados.get("municipioTomador", "")
+        uf_tomador = dados.get("ufTomador", "")
+        ocr_codigo_municipio_tomador = f"{municipio_tomador}-{uf_tomador}"
+        codigo_municipio_tomador = buscar_codigo_municipio(ocr_codigo_municipio_tomador)
         etree.SubElement(endereco_tomador, "CodigoMunicipio").text = codigo_municipio_tomador
 
-        uf_tomador = etree.SubElement(endereco_tomador, "Uf")
-        uf_tomador.text = dados.get("ufTomador", "")
+        # uf_tomador = etree.SubElement(endereco_tomador, "Uf")
+        # uf_tomador.text = dados.get("ufTomador", "")
 
         codigo_pais_tomador = etree.SubElement(endereco_tomador, "CodigoPais")
         codigo_pais_tomador.text = str(dados.get("codigoPais", "1058"))
@@ -777,54 +832,3 @@ class XMLGenerator:
         # Imprime o XML gerado
         print(f"XML gerado: {xml_str}")
         return xml_str
-
-    
-    
-
-class ExcelGenerator:
-    """Gera um arquivo Excel com os dados extraídos."""
-    
-    @staticmethod
-    def gerar_excel(dados: List[Dict], nome_arquivo: str = "dados_nfse.xlsx") -> str:
-        """Gera um arquivo Excel a partir de uma lista de dicionários."""
-        if not dados:
-            raise ValueError("Nenhum dado fornecido para gerar o Excel")
-
-        # Criação do DataFrame
-        df = pd.DataFrame(dados)
-
-        # Salvando o DataFrame em um arquivo Excel
-        df.to_excel(nome_arquivo, index=False)
-
-        print(f"Arquivo Excel gerado: {nome_arquivo}")
-        return nome_arquivo
-
-
-class ValidatorXSD:
-    """Valida um XML contra um esquema XSD."""
-    
-    @staticmethod
-    def validar_xml_abrasf(xml_str: str, caminho_xsd: str) -> Tuple[bool, list]:
-        """
-        Valida um XML gerado no padrão ABRASF contra o XSD oficial.
-        
-        :param xml_str: conteúdo do XML em string
-        :param caminho_xsd: caminho do arquivo .xsd
-        :return: (valido: bool, erros: list[str])
-        """
-        try:
-            xml_doc = etree.fromstring(xml_str.encode("utf-8"))
-            with open(caminho_xsd, "rb") as f:
-                xsd_doc = etree.XML(f.read())
-            schema = etree.XMLSchema(xsd_doc)
-
-            if schema.validate(xml_doc):
-                return True, []
-            else:
-                erros = [str(e.message) for e in schema.error_log]
-                return False, erros
-        except Exception as e:
-            logger.error(f"[XSD] Erro ao validar XML: {e}")
-            return False, [str(e)]
-        
-

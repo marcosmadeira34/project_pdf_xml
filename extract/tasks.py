@@ -44,6 +44,7 @@ def processar_pdfs(self, file_keys):
                     
                     # Baixa o arquivo do MinIO
                     pdf_bytes = download_file_from_minio(file_key)
+                    logger.info(f"Arquivo baixado: {file_name}, tamanho: {len(pdf_bytes)} bytes")
                     
                                      
                     logger.info(f"Processando arquivo baixado: {file_name}")
