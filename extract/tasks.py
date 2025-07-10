@@ -8,14 +8,14 @@ from .services import XMLGenerator, ExcelGenerator
 from .models import ArquivoZip
 import logging
 import PyPDF2
-
+from extract.minio_service import download_file_from_minio
 
 
 
 logger = logging.getLogger(__name__)
 
 @shared_task(bind=True)
-def processar_pdfs(self, files_data):
+def processar_pdfs(self, file_keys):
     """
     Processa múltiplos PDFs e retorna XMLs gerados
     files_data: dict {nome_arquivo: bytes_content}
@@ -26,7 +26,7 @@ def processar_pdfs(self, files_data):
         location = os.getenv("LOCATION")
         processor_id = os.getenv("PROCESSOR_ID")
 
-        total_files = len(files_data)
+        total_files = len(file_keys)
         processed_files = 0
         arquivos_resultado = {}  # Vai armazenar {nome_arquivo: xml_content_string}
         erros = []
@@ -35,9 +35,18 @@ def processar_pdfs(self, files_data):
         zip_buffer = io.BytesIO()
 
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-            for file_name, pdf_bytes in files_data.items():
+            for file_key in file_keys:
+                # Define o nome do arquivo a partir da chave
+                file_name = file_key.split('/')[-1]  # Definido fora do try
+
                 try:
-                    logger.info(f"Processando arquivo: {file_name}")
+                    logger.info(f"Baixando arquivo do Addon Bucketeer: {file_key}")
+                    
+                    # Baixa o arquivo do MinIO
+                    pdf_bytes = download_file_from_minio(file_key)
+                    
+                                     
+                    logger.info(f"Processando arquivo baixado: {file_name}")
                     
                     # Processa com DocumentAI
                     document_json = processor.processar_pdf(project_id, location, processor_id, pdf_bytes)
@@ -45,8 +54,6 @@ def processar_pdfs(self, files_data):
 
                     # Mapeia campos e converte para XML válido
                     dados_extraidos = processor.mapear_campos(document_json)
-                    logger.info(f"Dados extraídos: {dados_extraidos}")
-
                     # Gera XML válido usando XMLGenerator
                     xml_str = XMLGenerator.gerar_xml_abrasf(dados_extraidos)
                     logger.info(f"XML gerado para {file_name}, tamanho: {len(xml_str)} chars")
@@ -57,8 +64,7 @@ def processar_pdfs(self, files_data):
 
                     # Armazena o XML como string
                     xml_filename = file_name.replace('.pdf', '.xml')
-                    arquivos_resultado[file_name] = xml_str  # STRING do XML, não dict
-                    
+                    arquivos_resultado[file_name] = xml_str  # STRING do XML, não dict                    
                     # Adiciona ao ZIP
                     zip_file.writestr(xml_filename, xml_str.encode('utf-8'))
                     
@@ -81,8 +87,7 @@ def processar_pdfs(self, files_data):
 
         # Salva ZIP no banco de dados
         zip_buffer.seek(0)
-        zip_bytes = zip_buffer.getvalue()
-        
+        zip_bytes = zip_buffer.getvalue()        
         # Nome do arquivo ZIP
         zip_filename = f"xmls_processados_{self.request.id}.zip"
         
@@ -96,19 +101,7 @@ def processar_pdfs(self, files_data):
         logger.info(f"Nome do arquivo: {zip_filename}")
         logger.info(f"Arquivos processados: {list(arquivos_resultado.keys())}")
 
-        # Notifica o usuário
-#         channel_layer = get_channel_layer()
-#         async_to_sync(channel_layer.group_send)(
-#             f"user_{requests.user.id}",
-#             {
-#                 "type": "notify",
-#                 "message": {
-#                     "title": "Processamento Concluído!",
-#                     "detail": f"Seus arquivos estão prontos para download (Task ID: {arquivo_zip.id})."
-#                 }
-#             }
-# )
-
+ 
         # Retorna resultado estruturado
         return {
             'success': True,
@@ -126,7 +119,7 @@ def processar_pdfs(self, files_data):
             'error': str(e),
             'arquivos_resultado': {},
             'processed_files': 0,
-            'total_files': len(files_data) if files_data else 0
+            'total_files': len(file_keys) if file_keys else 0
         }
 
 

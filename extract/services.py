@@ -35,7 +35,7 @@ class CredentialsLoader:
     @staticmethod
     def loader_credentials() -> Optional[service_account.Credentials]:
         credentials_env = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-        print(f'Carregado credenciais do ambiente: {credentials_env}')
+        
 
         if not credentials_env:
             print("Variável de ambiente GOOGLE_APPLICATION_CREDENTIALS não definida")
@@ -43,7 +43,7 @@ class CredentialsLoader:
 
         # Verifica se a string é um caminho de arquivo válido
         if os.path.exists(credentials_env):
-            print(f"Carregando credenciais do arquivo: {credentials_env}")
+            
             try:
                 with open(credentials_env, "r") as file:
                     credentials_data = json.load(file)

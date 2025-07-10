@@ -23,6 +23,7 @@ from .models import ArquivoZip, UserCredits
 # Certifique-se de que esses imports estão corretos para o seu projeto
 from extract.services import DocumentAIProcessor
 from extract.tasks import processar_pdfs, merge_pdfs_task  # Removido processar_pdf_com_ai
+from extract.minio_service import upload_file_to_minio  # Certifique-se de que este caminho está correto
 
 logger = logging.getLogger(__name__)
 
@@ -146,14 +147,14 @@ class UploadEProcessarPDFView(View):
             else:
                 # Para processar individualmente, vamos criar uma única tarefa com todos os arquivos
                 # A função processar_pdfs espera um dicionário {nome_arquivo: bytes}
-                files_dict = {}
+                file_keys = []
                 for file in files:
-                    files_dict[file.name] = file.read()
-                
-                logger.info(f"Files dictionary created with {len(files_dict)} files")
-                
+                    file_key = f"user_{request.user.id}/{uuid.uuid4()}/{file.name}"
+                    upload_file_to_minio(file, file_key)
+                    file_keys.append(file_key)  # Salva só o caminho
+
                 # Chama a tarefa com o dicionário de arquivos
-                task = processar_pdfs.delay(files_dict)
+                task = processar_pdfs.delay(file_keys)
                 
                 return JsonResponse({
                     'success': True,
