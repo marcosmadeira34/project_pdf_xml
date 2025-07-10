@@ -80,3 +80,4 @@ whitenoise==6.9.0
 wrapt==1.17.2
 redis
 qrcode
+boto3
