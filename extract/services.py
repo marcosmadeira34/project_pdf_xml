@@ -158,8 +158,9 @@ class DocumentAIProcessor:
         "inscricao_municipal": "inscricaoMunicipalTomador",
         "inscricao_municipal_prestador": "inscricaoMunicipalPrestador",
         "inss": "valorInss",
-        "iss": "valorIss",   
-        "item_lista_servico" : "item_lista_servico",  # ou itemListaServico, dependendo do seu mapeamento
+        "iss": "valorIss",
+        "iss_retido_fonte": "issRetidoFonte",
+        "item_lista_servico": "item_lista_servico",  # ou itemListaServico, dependendo do seu mapeamento
         "local_prestacao": "localPrestacao",
         "municipio_prestador": "municipioPrestador",
         "municipio_tomador": "municipioTomador",
@@ -550,6 +551,8 @@ class XMLGenerator:
         valor_iss_formatado = valor_iss.replace('.', '').replace(',', '.')
         etree.SubElement(valores_nfse, "ValorIss").text = valor_iss_formatado
         
+
+        # Iss Retido Fonte
         
 
         # Dados do prestador
@@ -662,14 +665,33 @@ class XMLGenerator:
 
         for campo, xml_tag in [
             ("deducoes", "ValorDeducoes"),
-            ("impostoRenda", "ValorIr"),
             ("valorIss", "ValorIss"),
+            ("impostoRenda", "ValorIr"),
         ]:
             valor = cls.validar_dados_criticos(dados, campo)
             valor_xml = valor if valor else "0.00"
             etree.SubElement(valores_servico, xml_tag).text = str(valor_xml)
 
         
+
+        # IssRetido
+        valor_iss_retido_fonte = cls.normalize_valor(dados.get("issRetidoFonte", "0.00"))
+        # Verifica se o valor é maior que zero
+        if valor_iss_retido_fonte > 0:
+            iss_retido_formatado = "1"
+            logger.info(
+                f"Houve retenção de ISS na nota {dados.get('numero-nota-fiscal', '')}: Valor: {valor_iss_retido_fonte} | "
+                f"Prestador: {dados.get('razaoSocialPrestador', '')}"
+            )
+            etree.SubElement(valores_servico, "IssRetido").text = iss_retido_formatado
+            etree.SubElement(valores_servico, "ValorIssRetido").text = str(valor_iss_retido_fonte)
+        else:
+            iss_retido_formatado = "2"
+            logger.info(
+                f"Não houve retenção de ISS na nota {dados.get('numero-nota-fiscal', '')}: Valor: {valor_iss_retido_fonte} | "
+                f"Prestador: {dados.get('razaoSocialPrestador', '')}"
+            )
+            etree.SubElement(valores_servico, "IssRetido").text = iss_retido_formatado
 
 
         # Aliquota
@@ -681,18 +703,8 @@ class XMLGenerator:
         else:
             aliquota_servico_float = "0.00"
             #raise ValueError(f"Valor inválido para alíquota: {aliquota_servico}")
-        etree.SubElement(valores_servico, "Aliquota").text = str(aliquota_servico_float)    
+        etree.SubElement(valores_servico, "Aliquota").text = str(aliquota_servico_float)          
 
-        # IssRetido
-        iss_retido_val = str(dados.get("iss_retido", "")).strip().lower()   
-        iss_retido_formatado = "1" if iss_retido_val in ["1", "sim", "true"] else "2"
-        logger.info(
-            f"Houve retenção de ISS na nota {dados.get('numero-nota-fiscal', '')}: Valor: {iss_retido_formatado} | "
-            f"Prestador: {dados.get('razaoSocialPrestador', '')}"
-        )        
-        etree.SubElement(servico, "IssRetido").text = iss_retido_formatado
-
-        
                
        # Extração e formatação do Código CNAE
         codigo_cnae_raw = dados.get("codigoCnae", "")
@@ -842,8 +854,8 @@ class XMLGenerator:
                     valor_servicos_dec = cls.normalize_valor(base_calculo_formatada)
                     logger.info(f"Valor serviços dec não encontrado, usando base de cálculo: {valor_servicos_dec}")
 
-                valor_iss_dec = cls.normalize_valor(dados.get("valorIss", "0.00"))
                 valor_ir_dec = cls.normalize_valor(dados.get("valorIr", "0.00"))
+                valor_iss_dec = cls.normalize_valor(dados.get("valorIss", "0.00"))
 
                 valor_liquido_calc = valor_servicos_dec - valor_iss_dec - valor_ir_dec
                 valor_liquido_nfse = "{:.2f}".format(valor_liquido_calc)
