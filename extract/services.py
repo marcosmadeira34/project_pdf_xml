@@ -187,6 +187,7 @@ class DocumentAIProcessor:
         "valor_aprox_tributos_fonte": "valorAproxTributosFonte",
         "valor_liquido": "valorLiquido",
         "valor_servico": "valorServicos",
+        "valor_total_nota": "valorTotalNota",
     }
 
         # Percorre todas as entidades retornadas
@@ -654,23 +655,7 @@ class XMLGenerator:
         servico = etree.SubElement(inf_declaracao_prestacao_servico, "Servico")
         valores_servico = etree.SubElement(servico, "Valores")
         
-        # ValorServicos
-        valor_servicos = cls.validar_dados_criticos(dados, "valorServicos")
-        if valor_servicos:
-            valor_final = valor_servicos
-        else:
-            valor_final = cls.to_decimal_str(base_calculo_formatada)
-
-        etree.SubElement(valores_servico, "ValorServicos").text = str(valor_final)
-
-        for campo, xml_tag in [
-            ("deducoes", "ValorDeducoes"),
-            ("valorIss", "ValorIss"),
-            ("impostoRenda", "ValorIr"),
-        ]:
-            valor = cls.validar_dados_criticos(dados, campo)
-            valor_xml = valor if valor else "0.00"
-            etree.SubElement(valores_servico, xml_tag).text = str(valor_xml)
+        
 
         
 
@@ -741,9 +726,46 @@ class XMLGenerator:
         # Adiciona ao XML
         etree.SubElement(servico, "ItemListaServico").text = item_lista_servico
         
-        
-        # Discriminação do serviço
 
+
+        # valor_total_nota
+        valor_total_nota = cls.validar_dados_criticos(dados, "valorTotalNota", numero_nf_key='numero-nota-fiscal',
+                                                    prestador_key="razaoSocialPrestador")
+        if valor_total_nota:
+            valor_total_formatado = valor_total_nota
+        else:
+            valor_total_formatado = cls.to_decimal_str(base_calculo_formatada)  
+
+
+        # ValorServicos
+        valor_servicos = cls.validar_dados_criticos(dados, "valorServicos")
+        
+        # === Aplicando lógica condicional para 03205 ===
+        # Remove pontos para comparar com "03205"
+        
+
+        if item_lista_servico == "03205":
+            valor_final = valor_total_formatado
+        else:
+            valor_final = valor_servicos if valor_servicos else cls.to_decimal_str(base_calculo_formatada)
+
+        # Adiciona ao XML
+        etree.SubElement(valores_servico, "ValorServicos").text = str(valor_final)
+
+        for campo, xml_tag in [
+            ("deducoes", "ValorDeducoes"),
+            ("valorIss", "ValorIss"),
+            ("impostoRenda", "ValorIr"),
+        ]:
+            valor = cls.validar_dados_criticos(dados, campo)
+            valor_xml = valor if valor else "0.00"
+            etree.SubElement(valores_servico, xml_tag).text = str(valor_xml)
+
+
+        
+
+
+        # Discriminação do serviço
         discriminacao = etree.SubElement(servico, "Discriminacao").text = dados.get("Discriminacao", "")
         # Verifica se a discriminação está vazia
         if not discriminacao:
