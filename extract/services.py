@@ -134,7 +134,7 @@ class DocumentAIProcessor:
         "cep_tomador": "cepTomador",
         "cidade_nfs": "cidadeNfs",
         "cod_verificacao": "codigoVerificacao",
-        "cofins": "cofins",
+        "cofins": "valorCofins",
         "cpf_cnpj_prestador": "cpfCnpjPrestador",        # exemplo para prestador
         "cpf_cnpj_tomador": "cpfCnpjTomador",    # exemplo para tomador
         "cnae": "codigoCnae",
@@ -143,8 +143,9 @@ class DocumentAIProcessor:
         "data_da_emissao": "dataEmissao",
         "data_emissao_rps": "dataEmissaoRps",
         "data_rps": "dataRps",
-        "deducoes": "deducoes",
-        "desc_incon": "descIncondicional",
+        "deducoes": "ValorDeducoes",
+        "desc_incondicionado": "descIncondicional",
+        "desconto_condicionado": "descontoCondicionado",
         "descontos_diversos": "descontosDiversos",
         "discriminacao": "Discriminacao",# pode ser o mesmo que 'discriminacao_servico'
         "email_prestador": "emailPrestador",
@@ -159,7 +160,7 @@ class DocumentAIProcessor:
         "inscricao_municipal_prestador": "inscricaoMunicipalPrestador",
         "inss": "valorInss",
         "iss": "valorIss",
-        "iss_retido_fonte": "issRetidoFonte",
+        "iss_retido_fonte": "iss_retido_fonte",
         "item_lista_servico": "item_lista_servico",  # ou itemListaServico, dependendo do seu mapeamento
         "local_prestacao": "localPrestacao",
         "municipio_prestador": "municipioPrestador",
@@ -167,9 +168,10 @@ class DocumentAIProcessor:
         "nome_fantasia": "nomeFantasiaPrestador",
         "num_inscr_obra": "numInscricaoObra",
         "numero-nota-fiscal": "numero-nota-fiscal",        # ou numeroRps, dependendo do seu mapeamento
-        'numero_lograd_prestador': 'numeroPrestador',
-        'numero_lograd_tomador': 'numeroTomador',
-        "pis": "pis",
+        "numero_lograd_prestador": "numeroPrestador",
+        "numero_lograd_tomador": "numeroTomador",
+        "outras_retencoes": "outrasRetencoes",
+        "pis": "valorPis",
         "prefeitura_nota": "prefeituraNota",
         "razao_social_prestador": "razaoSocialPrestador",
         "razao_social_tomador": "razaoSocialTomador",
@@ -660,7 +662,16 @@ class XMLGenerator:
         
 
         # IssRetido
-        valor_iss_retido_fonte = cls.normalize_valor(dados.get("issRetidoFonte", "0.00"))
+        iss_retido_raw = str(dados.get("iss_retido_fonte", "")).strip().lower()
+        print(f"Valor bruto de ISS Retido Fonte: {iss_retido_raw}")
+        valor_iss_retido_fonte = Decimal("0.00")
+
+        # Trata o caso onde vem "Sim", "sim", "true", etc.
+        if iss_retido_raw in ["sim", "true", "1"]:
+            valor_iss_retido_fonte = cls.normalize_valor(dados.get("valorIss", "0.00"))  # ou outro campo correto com o valor
+
+        print(f"Valor ISS Retido Fonte: {valor_iss_retido_fonte}")
+
         # Verifica se o valor é maior que zero
         if valor_iss_retido_fonte > 0:
             iss_retido_formatado = "1"
@@ -754,15 +765,29 @@ class XMLGenerator:
 
         for campo, xml_tag in [
             ("deducoes", "ValorDeducoes"),
-            ("valorIss", "ValorIss"),
+            ("valorPis", "ValorPis"),
+            ("valorCofins", "ValorCofins"),
+            ("valorInss", "ValorInss"),
             ("impostoRenda", "ValorIr"),
+            ("csll", "ValorCsll"),
+            ("valorIss", "ValorIss"),
+            ("outrasRetencoes", "OutrasRetencoes"),
+            ("descIncondicional", "DescontoIncondicional"),
+            ("descontoCondicionado", "DescontoCondicionado"),
         ]:
-            valor = cls.validar_dados_criticos(dados, campo)
-            valor_xml = valor if valor else "0.00"
-            etree.SubElement(valores_servico, xml_tag).text = str(valor_xml)
+            try:
+                valor = cls.validar_dados_criticos(dados, campo)
+                # Se retornar vazio, None ou não numérico, usa fallback
+                if not valor or str(valor).strip() in ["", "-", "--", "N/A", "n/a", "na"]:
+                    valor = "0.00"
+            except Exception as e:
+                logger.warning(f"Erro ao obter o valor do campo '{campo}': {e}")
+                valor = "0.00"
+
+            etree.SubElement(valores_servico, xml_tag).text = str(valor)
 
 
-        
+        # Pis
 
 
         # Discriminação do serviço
