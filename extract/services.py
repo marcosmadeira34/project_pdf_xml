@@ -591,13 +591,12 @@ class XMLGenerator:
         etree.SubElement(endereco_prestador, "Numero").text = str(dados.get("numeroPrestador"))
         etree.SubElement(endereco_prestador, "Bairro").text = dados.get("bairroPrestador")
         
-
+        # Municipio do prestador
         municipio_prestador = dados.get("municipioPrestador", "")
+        print(f"Município do prestador original: {municipio_prestador}")
         uf_prestador = dados.get("ufPrestador", "")
-
         municipio_prestador = cls.limpar_nome_municipio(municipio_prestador, uf_prestador)
         print(f"Município do prestador após limpeza: {municipio_prestador}")
-
         codigo_municipio_prestador = cls.obter_codigo_municipio(municipio_prestador, uf_prestador)
         print(f"OCR Código Município Prestador: {codigo_municipio_prestador}")
         etree.SubElement(endereco_prestador, "CodigoMunicipio").text = codigo_municipio_prestador
@@ -804,6 +803,7 @@ class XMLGenerator:
             dados.get("municipioPrestador", ""),
             dados.get("ufPrestador", "")
         )
+        print(f"Código Município Serviço: {codigo_municipio_servico}")
 
         etree.SubElement(servico, "CodigoMunicipio").text = codigo_municipio_servico
 
@@ -818,6 +818,7 @@ class XMLGenerator:
             dados.get("municipioPrestador", ""),  # ou outro campo, se for diferente
             dados.get("ufPrestador", "")
         )
+        print(f"Código Município Incidência: {codigo_municipio_incidencia}")
 
         etree.SubElement(servico, "MunicipioIncidencia").text = codigo_municipio_incidencia
 
@@ -856,12 +857,11 @@ class XMLGenerator:
         
         # Municipio e uf do tomador
         municipio_tomador = dados.get("municipioTomador", "")
+        print(f"Município do tomador original: {municipio_tomador}")
         uf_tomador = dados.get("ufTomador", "")
-
         municipio_tomador = cls.limpar_nome_municipio(municipio_tomador, uf_tomador)
         print(f"Município do tomador após limpeza: {municipio_tomador}")
         codigo_municipio_tomador = cls.obter_codigo_municipio(municipio_tomador, uf_tomador)
-
         print(f"OCR Código Município Tomador: {codigo_municipio_tomador}")
         etree.SubElement(endereco_tomador, "CodigoMunicipio").text = codigo_municipio_tomador
 
