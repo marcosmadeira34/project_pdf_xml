@@ -35,3 +35,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(
             f'Ordem de pagamento criada com ID {payment_order.id} para o usuário {user.username}.'
         ))
+
+
+# Comando para criar uma ordem de pagamento:
+# python manage.py create_payment_order <user_id> <package_id>
