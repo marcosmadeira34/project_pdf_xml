@@ -94,6 +94,7 @@ class UploadEProcessarPDFView(View):
             # Conta quantos arquivos serão processados
             files = request.FILES.getlist('files[]')
             required_credits = len(files)
+            logger.info(f"Arquivos recebidos: {[f.name for f in request.FILES.getlist('files')]}")
             
             logger.info(f"Files received: {len(files)}")
             logger.info(f"Required credits: {required_credits}")

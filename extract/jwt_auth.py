@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 # Chave secreta para JWT - deve ser a mesma que o Django SECRET_KEY ou uma específica
 JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', settings.SECRET_KEY)
 JWT_ALGORITHM = 'HS256'
-JWT_ACCESS_TOKEN_LIFETIME = datetime.timedelta(hours=24)  # Token válido por 24 horas
+JWT_ACCESS_TOKEN_LIFETIME = datetime.timedelta(hours=12)  # Token válido por 24 horas
 JWT_REFRESH_TOKEN_LIFETIME = datetime.timedelta(days=7)   # Refresh token válido por 7 dias
 
 

@@ -49,3 +49,5 @@ urlpatterns = [
     path("credits/confirm-payment/", ConfirmPaymentView.as_view(), name="confirm-payment"),
     path("credits/payment-status/<uuid:order_id>/", PaymentOrderStatusView.as_view(), name="payment-order-status"),
 ]
+
+

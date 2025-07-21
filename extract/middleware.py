@@ -19,6 +19,10 @@ class JWTAuthenticationMiddleware:
 
     def __call__(self, request):
         path = request.path_info
+
+        # ✅ Libera requisições OPTIONS (CORS preflight)
+        if request.method == 'OPTIONS':
+            return self.get_response(request)
         
         # Verifica se a URL precisa de autenticação
         needs_auth = not any(path.startswith(exempt) for exempt in self.exempt_paths)
