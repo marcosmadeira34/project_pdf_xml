@@ -532,6 +532,9 @@ class XMLGenerator:
         base_calculo = str(dados.get("baseCalculo", ""))
         # Remove o ponto de milhar e substitui a vírgula por ponto
         base_calculo_formatada = base_calculo.replace('.', '').replace(',', '.')
+        if not base_calculo_formatada:
+            base_calculo_formatada = "0.00"
+            print(f"[AVISO] Base de cálculo ausente ou inválida na nota {dados.get('numero-nota-fiscal', '')} | Prestador: {dados.get('razaoSocialPrestador', '')}")
         # Agora você pode usar a string formatada
         etree.SubElement(valores_nfse, "BaseCalculo").text = base_calculo_formatada
 

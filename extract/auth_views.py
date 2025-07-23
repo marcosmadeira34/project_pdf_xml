@@ -199,6 +199,7 @@ class AuthVerifyView(View):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class AuthLogoutView(View):
+    
     """
     Endpoint para logout (invalidação de token)
     Nota: Como JWT é stateless, apenas retornamos sucesso.

@@ -14,7 +14,10 @@ class JWTAuthenticationMiddleware:
             '/auth/login/',
             '/auth/refresh/',
             '/credits/packages/',  # Permitir ver pacotes sem login
-            '/download-zip/'
+            '/download-zip/',
+            '/login/',
+            '/logout/',
+            '/user-profile/',  # Permitir acesso ao perfil do usuário sem autenticação
         ]
 
     def __call__(self, request):

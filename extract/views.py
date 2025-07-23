@@ -25,6 +25,9 @@ from extract.services import DocumentAIProcessor
 from extract.tasks import processar_pdfs, merge_pdfs_task  # Removido processar_pdf_com_ai
 from extract.minio_service import upload_file_to_minio  # Certifique-se de que este caminho está correto
 
+
+
+
 logger = logging.getLogger(__name__)
 
 # --- View de Login ---
@@ -352,4 +355,17 @@ class SendXMLToExternalAPIView(View):
             return JsonResponse({"status": "error", "error": f"Erro interno do servidor: {str(e)}"}, status=500)
         
 
-# --- View para a Página Inicial (Home) ---
+# Método para retornar o perfil do usuário autenticado
+
+def user_profile(request):
+    user = request.user
+    if not user.is_authenticated:
+        return JsonResponse({'error': 'Não autenticado'}, status=401)
+    
+    return JsonResponse({
+        'id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'first_name': user.first_name,
+        'last_name': user.last_name,
+    })
