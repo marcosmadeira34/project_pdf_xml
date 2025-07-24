@@ -891,33 +891,55 @@ class XMLGenerator:
         email_tomador.text = dados.get("emailTomador", "")
 
 
+        valor_liquido_nfse = "0.00"  # valor padrão
+
+        # Tenta pegar o valor líquido informado diretamente
         valor_liquido_str = dados.get("valorLiquido", "").replace(',', '.').strip()
+        print(f"Valor líquido bruto: {valor_liquido_str}")
+        logger.info(f"Valor líquido bruto: {valor_liquido_str}")
+        if valor_liquido_str >= "0.00":
+            etree.SubElement(valores_nfse, "ValorLiquidoNfse").text = valor_liquido_str
+        else:
 
-        try:
-            valor_liquido_nfse = "{:.2f}".format(Decimal(valor_liquido_str))
-        except (InvalidOperation, ValueError):
             try:
-                valor_servicos_dec = cls.normalize_valor(dados.get("valorServicos", "0.00"))
-                logger.info(f"Valor serviços original: {dados.get('valorServicos', '0.00')}")
-                logger.info(f"Valor serviços normalizado: {valor_servicos_dec}")
-                if not valor_servicos_dec:
-                    valor_servicos_dec = cls.normalize_valor(base_calculo_formatada)
-                    logger.info(f"Valor serviços dec não encontrado, usando base de cálculo: {valor_servicos_dec}")
+                valor_liquido_dec = Decimal(valor_liquido_str)
+                if valor_liquido_dec >= 0:
+                    valor_liquido_nfse = "{:.2f}".format(valor_liquido_dec)
+                    logger.info(f"Valor líquido da NFS-e: {valor_liquido_nfse}")
+                else:
+                    logger.warning(
+                        f"Valor líquido negativo na nota {dados.get('numero-nota-fiscal', '')} | "
+                        f"Prestador: {dados.get('razaoSocialPrestador', '')}. Usando cálculo alternativo."
+                    )
+                    raise InvalidOperation("Valor líquido negativo")  # Força fallback para cálculo
+            except (InvalidOperation, ValueError):
+                try:
+                    # Tenta usar o valor dos serviços como base de cálculo
+                    valor_servicos_dec = cls.normalize_valor(dados.get("valorServicos", "0.00"))
+                    logger.info(f"Valor serviços original: {dados.get('valorServicos', '0.00')}")
+                    logger.info(f"Valor serviços normalizado: {valor_servicos_dec}")
 
-                valor_ir_dec = cls.normalize_valor(dados.get("valorIr", "0.00"))
-                valor_iss_dec = cls.normalize_valor(dados.get("valorIss", "0.00"))
+                    if not valor_servicos_dec:
+                        valor_servicos_dec = cls.normalize_valor(base_calculo_formatada)
+                        logger.info(f"Valor serviços não encontrado, usando base de cálculo: {valor_servicos_dec}")
 
-                valor_liquido_calc = valor_servicos_dec - valor_iss_dec - valor_ir_dec
-                valor_liquido_nfse = "{:.2f}".format(valor_liquido_calc)
-                print(f"Valor líquido calculado: {valor_liquido_nfse}")
-            except (InvalidOperation, ValueError, TypeError) as e:
-                valor_liquido_nfse = "0.00"
-                logger.error(
-                    f"Erro ao calcular o valor líquido: {e}. Usando valor padrão 0.00. "
-                    f"Nota número: {dados.get('numero-nota-fiscal', '')}"
-                )
+                    # Subtrai impostos
+                    valor_ir_dec = cls.normalize_valor(dados.get("valorIr", "0.00"))
+                    valor_iss_dec = cls.normalize_valor(dados.get("valorIss", "0.00"))
 
-        etree.SubElement(valores_nfse, "ValorLiquidoNfse").text = valor_liquido_nfse
+                    # Calcula o valor líquido
+                    valor_liquido_calc = valor_servicos_dec - valor_iss_dec - valor_ir_dec
+                    valor_liquido_nfse = "{:.2f}".format(valor_liquido_calc)
+                    logger.info(f"Valor líquido calculado: {valor_liquido_nfse}")
+                except (InvalidOperation, ValueError, TypeError) as e:
+                    valor_liquido_nfse = "0.00"
+                    logger.error(
+                        f"Erro ao calcular o valor líquido: {e}. Usando valor padrão 0.00. "
+                        f"Nota número: {dados.get('numero-nota-fiscal', '')}"
+                    )
+
+            # Cria a tag XML apenas uma vez, com o valor final decidido
+            etree.SubElement(valores_nfse, "ValorLiquidoNfse").text = valor_liquido_nfse
 
         # Gerando o XML em formato string
         xml_str = etree.tostring(root, pretty_print=True, encoding="UTF-8").decode("utf-8")
