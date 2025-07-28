@@ -9,6 +9,7 @@ from .views import (
     StreamlitAppRedirectView,
     SendXMLToExternalAPIView,
     user_profile,
+    SupportTicketView
 )
 from .auth_views import (
     AuthLoginView,
@@ -35,6 +36,9 @@ urlpatterns = [
     path("streamlit-dashboard/", StreamlitAppRedirectView.as_view(), name="streamlit-dashboard"),
     path("send-xml-to-external-api/", SendXMLToExternalAPIView.as_view(), name="send-xml-to-external-api"),
     path("user-profile/", user_profile, name="user-profile"),  # Nova view para perfil do usuário
+    path("support-ticket/", SupportTicketView.as_view(), name="support-ticket"),  # Nova view para tickets de suporte
+
+
     # Endpoints de autenticação JWT
     path("auth/login/", AuthLoginView.as_view(), name="auth-login"),
     path("auth/refresh/", AuthRefreshView.as_view(), name="auth-refresh"),

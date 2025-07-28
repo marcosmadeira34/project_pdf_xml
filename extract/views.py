@@ -18,14 +18,18 @@ from django.http import FileResponse, Http404
 from .models import ArquivoZip
 from django.http import FileResponse, Http404
 from io import BytesIO
-from .models import ArquivoZip, UserCredits
+from .models import ArquivoZip, UserCredits, SupportTicket, SupportTicketAttachment
 # Importa as classes e funções do seu processador e tarefas Celery
 # Certifique-se de que esses imports estão corretos para o seu projeto
 from extract.services import DocumentAIProcessor
 from extract.tasks import processar_pdfs, merge_pdfs_task  # Removido processar_pdf_com_ai
 from extract.minio_service import upload_file_to_minio  # Certifique-se de que este caminho está correto
 
-
+from django.conf import settings
+from django.core.mail import send_mail
+from django.forms.models import model_to_dict
+from django.contrib.auth.models import User
+from extract.jwt_auth import JWTAuthenticationService
 
 
 logger = logging.getLogger(__name__)
@@ -369,3 +373,90 @@ def user_profile(request):
         'first_name': user.first_name,
         'last_name': user.last_name,
     })
+
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class SupportTicketView(View):
+    def dispatch(self, request, *args, **kwargs):
+        auth_header = request.headers.get('Authorization', '')
+        if not auth_header.startswith('Bearer '):
+            return JsonResponse({"error": "Token de autenticação necessário"}, status=401)
+
+        token = auth_header[7:]
+
+        user_data = JWTAuthenticationService.verify_token(token)
+        if not user_data:
+            return JsonResponse({"error": "Token inválido"}, status=401)
+
+        try:
+            from django.contrib.auth.models import User
+            user = User.objects.get(id=user_data['user_id'])
+            request.user = user
+        except User.DoesNotExist:
+            return JsonResponse({"error": "Usuário não encontrado"}, status=401)
+
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request):
+        if not hasattr(request, 'user') or not request.user.is_authenticated:
+            return JsonResponse({"error": "Usuário não autenticado"}, status=401)
+
+        try:
+            # Multipart form, pegar dos campos POST
+            subject = request.POST.get("subject")
+            description = request.POST.get("description")
+            priority = request.POST.get("priority")
+
+            if not subject or not description or not priority:
+                return JsonResponse({"error": "Campos obrigatórios ausentes"}, status=400)
+
+            ticket = SupportTicket.objects.create(
+                user=request.user,
+                subject=subject,
+                description=description,
+                priority=priority,
+                status='aberto'
+            )
+
+            # Se você quiser salvar arquivos, trate aqui:
+            attachments = request.FILES.getlist('attachments')
+            for f in attachments:
+                # Exemplo: salvar no modelo SupportTicketAttachment
+                SupportTicketAttachment.objects.create(ticket=ticket, file=f)
+
+                
+
+            # Montar corpo do email com o email do usuário autenticado
+            user_email = request.user.email
+            email_subject = f"[SUPORTE] Nova solicitação - Prioridade: {priority.upper()}"
+            email_body = f"Usuário: {user_email}\n\nAssunto: {subject}\n\nDescrição:\n{description}"
+
+            recipient_list = [settings.SUPPORT_EMAIL]
+
+            send_mail(
+                subject=email_subject,
+                message=email_body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=recipient_list,
+                fail_silently=False
+            )
+
+            return JsonResponse({
+                "status": "success",
+                "message": "Ticket de suporte enviado com sucesso!",
+                "ticket": model_to_dict(ticket)
+            })
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({"error": f"Erro interno no servidor: {str(e)}"}, status=500)
+
+    def get(self, request):
+        if not hasattr(request, 'user') or not request.user.is_authenticated:
+            return JsonResponse({"error": "Usuário não autenticado"}, status=401)
+
+        tickets = SupportTicket.objects.filter(user=request.user).order_by('-created_at')
+        data = [model_to_dict(ticket) for ticket in tickets]
+        return JsonResponse(data, safe=False)

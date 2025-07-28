@@ -1,5 +1,7 @@
 from django.contrib import admin
-from .models import UserCredits, PaymentOrder, CreditTransaction, CreditPackage
+from .models import (
+    UserCredits, PaymentOrder, CreditTransaction, CreditPackage, SupportTicket
+)
 
 @admin.register(UserCredits)
 class UserCreditsAdmin(admin.ModelAdmin):
@@ -73,3 +75,11 @@ class CreditPackageAdmin(admin.ModelAdmin):
             'fields': ('is_active', 'is_popular')
         })
     )
+
+
+@admin.register(SupportTicket)
+class SupportTicketAdmin(admin.ModelAdmin):
+    list_display = ['id', 'subject', 'status', 'priority', 'created_at']
+    list_filter = ['status', 'priority']
+    search_fields = ['subject', 'description']
+    readonly_fields = ['created_at', 'updated_at']

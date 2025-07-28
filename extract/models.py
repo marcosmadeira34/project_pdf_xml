@@ -2,7 +2,8 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 import uuid
-
+from django.core.mail import send_mail
+from django.conf import settings
 
 
 
@@ -196,3 +197,59 @@ class ArquivoZip(models.Model):
     
     def __str__(self):
         return f"{self.nome_arquivo or 'ZIP'} - {self.criado_em.strftime('%d/%m/%Y %H:%M')}"
+    
+
+# Modelo para tickets de suporte
+class SupportTicket(models.Model):
+    STATUS_CHOICES = [
+        ('aberto', 'Aberto'),
+        ('em_andamento', 'Em Andamento'),
+        ('respondido', 'Respondido'),
+        ('fechado', 'Fechado'),
+    ]
+
+    PRIORITY_CHOICES = [
+        ('baixa', 'Baixa'),
+        ('media', 'Média'),
+        ('alta', 'Alta'),
+        ('urgente', 'Urgente'),
+    ]
+
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='support_tickets')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='aberto', help_text="Status do ticket")
+    created_at = models.DateTimeField(auto_now_add=True, help_text="Data de criação do ticket")
+    updated_at = models.DateTimeField(auto_now=True, help_text="Data da última atualização do ticket")
+    priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='media', help_text="Prioridade do ticket")
+    subject = models.CharField(max_length=200, help_text="Assunto do ticket")
+    description = models.TextField(help_text="Descrição do problema")
+    response = models.TextField(blank=True, null=True, help_text="Resposta do suporte")
+
+    # Método para enviar e-mail de notificação ao usuário quando o ticket é respondido
+    def save(self, *args, **kwargs):
+        # Verifica se o status foi alterado para "respondido"
+        if self.pk:
+            original = SupportTicket.objects.get(pk=self.pk)
+            if original.status != 'respondido' and self.status == 'respondido':
+                try:
+                    send_mail(
+                        subject=f"Seu ticket #{self.id} foi respondido!",
+                        message=self.response or "Sua solicitação foi respondida pela equipe de suporte.",
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=[self.user.email],  # OU email do usuário, se tiver
+                        fail_silently=True
+                    )
+                except Exception as e:
+                    print("Erro ao enviar e-mail de resposta:", e)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"#{self.id} - {self.subject}"
+    
+
+
+
+class SupportTicketAttachment(models.Model):
+    ticket = models.ForeignKey(SupportTicket, on_delete=models.CASCADE, related_name="attachments")
+    file = models.FileField(upload_to="support_attachments/")
+    uploaded_at = models.DateTimeField(auto_now_add=True)

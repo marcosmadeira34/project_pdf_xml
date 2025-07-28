@@ -3,6 +3,8 @@ from django.urls import resolve
 from django.contrib.auth.models import AnonymousUser
 import json
 from .jwt_auth import JWTAuthenticationService
+from django.contrib.auth.models import AnonymousUser
+from django.http import HttpResponse
 
 class JWTAuthenticationMiddleware:
     def __init__(self, get_response):
@@ -18,6 +20,8 @@ class JWTAuthenticationMiddleware:
             '/login/',
             '/logout/',
             '/user-profile/',  # Permitir acesso ao perfil do usuário sem autenticação
+            
+            
         ]
 
     def __call__(self, request):
@@ -25,7 +29,15 @@ class JWTAuthenticationMiddleware:
 
         # ✅ Libera requisições OPTIONS (CORS preflight)
         if request.method == 'OPTIONS':
-            return self.get_response(request)
+            # Retornar resposta direta com cabeçalhos CORS            
+            response = HttpResponse()
+            response["Access-Control-Allow-Origin"] = "*"
+            response["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+            response["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
+            response["Access-Control-Allow-Credentials"] = "true"
+            response.status_code = 200
+            return response
+        
         
         # Verifica se a URL precisa de autenticação
         needs_auth = not any(path.startswith(exempt) for exempt in self.exempt_paths)
