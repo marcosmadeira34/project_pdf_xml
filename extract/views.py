@@ -15,7 +15,7 @@ from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.http import FileResponse, Http404
-from .models import ArquivoZip
+from .models import ArquivoZip, TaskStatusModel
 from django.http import FileResponse, Http404
 from io import BytesIO
 from .models import ArquivoZip, UserCredits, SupportTicket, SupportTicketAttachment
@@ -163,6 +163,14 @@ class UploadEProcessarPDFView(View):
 
                 # Chama a tarefa com o dicionário de arquivos
                 task = processar_pdfs.delay(file_keys)
+
+                # ✅ Cria o status antes da execução iniciar
+                TaskStatusModel.objects.create(
+                    user=request.user,
+                    task_id=task.id,
+                    status='AGUARDANDO'
+                )
+
                 
                 return JsonResponse({
                     'success': True,

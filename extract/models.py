@@ -253,3 +253,13 @@ class SupportTicketAttachment(models.Model):
     ticket = models.ForeignKey(SupportTicket, on_delete=models.CASCADE, related_name="attachments")
     file = models.FileField(upload_to="support_attachments/")
     uploaded_at = models.DateTimeField(auto_now_add=True)
+
+
+
+class TaskStatusModel(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='task_statuses')
+    task_id = models.CharField(max_length=100, help_text="ID da tarefa")
+    status = models.CharField(max_length=20, help_text="Status da tarefa")
+    created_at = models.DateTimeField(auto_now_add=True, help_text="Data de criação do status")
+    updated_at = models.DateTimeField(auto_now=True, help_text="Data da última atualização do status")
+    result = models.TextField(blank=True, null=True, help_text="Resultado da tarefa (se aplicável)")

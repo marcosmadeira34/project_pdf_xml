@@ -5,14 +5,32 @@ import base64
 from celery import shared_task
 from .services import DocumentAIProcessor
 from .services import XMLGenerator, ExcelGenerator
-from .models import ArquivoZip
+from .models import ArquivoZip, TaskStatusModel
 import logging
 import PyPDF2
 from extract.minio_service import download_file_from_minio
-
+import json
 
 
 logger = logging.getLogger(__name__)
+
+def update_task_status(task_id, status, result=None):
+    """
+    Atualiza o status de uma tarefa no banco de dados.
+    """
+    try:
+        task = TaskStatusModel.objects.get(task_id=task_id)
+        task.status = status
+        task.result = result
+        task.save()
+        logger.info(f"Tarefa {task_id} atualizada para status: {status}")
+
+    except TaskStatusModel.DoesNotExist:
+        logger.warning(f"TaskStatusModel não encontrado para task_id {task_id}")
+    except Exception as e:
+        logger.error(f"Erro ao atualizar status da tarefa {task_id}: {str(e)}", exc_info=True)
+
+
 
 @shared_task(bind=True)
 def processar_pdfs(self, file_keys):
@@ -20,6 +38,7 @@ def processar_pdfs(self, file_keys):
     Processa múltiplos PDFs e retorna XMLs gerados
     files_data: dict {nome_arquivo: bytes_content}
     """
+    update_task_status(self.request.id, 'PROCESSANDO')
     try:
         processor = DocumentAIProcessor()
         project_id = os.getenv("PROJECT_ID")
@@ -102,9 +121,8 @@ def processar_pdfs(self, file_keys):
         logger.info(f"Nome do arquivo: {zip_filename}")
         logger.info(f"Arquivos processados: {list(arquivos_resultado.keys())}")
 
- 
-        # Retorna resultado estruturado
-        return {
+        # Resultados do processamento
+        result = {
             'success': True,
             'arquivos_resultado': arquivos_resultado,  # Dict com XMLs como strings
             'zip_id': str(arquivo_zip.id),
@@ -113,15 +131,23 @@ def processar_pdfs(self, file_keys):
             'erros': erros
         }
 
+        # Atualiza o status da tarefa para COMPLETO
+        update_task_status(self.request.id, 'SUCESSO', json.dumps(result))
+
+        # Retorna resultado estruturado
+        return result
+    
     except Exception as e:
         logger.error(f"Erro geral no processamento: {str(e)}", exc_info=True)
-        return {
+        resultado_erro = {
             'success': False,
             'error': str(e),
             'arquivos_resultado': {},
             'processed_files': 0,
             'total_files': len(file_keys) if file_keys else 0
         }
+        update_task_status(self.request.id, 'ERRO', json.dumps(resultado_erro))  # <-- Aqui
+        return resultado_erro
 
 
 @shared_task(bind=True)
