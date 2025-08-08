@@ -34,7 +34,8 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*', 'https://nfse-abrasf-project-633c01390d1d.herokuapp.com/']
+ALLOWED_HOSTS = ['*', 'https://nfse-abrasf-project-633c01390d1d.herokuapp.com/', 
+                 'alive.com.br', 'www.alive.com.br', '3.132.214.90']
 
 
 # Application definition
