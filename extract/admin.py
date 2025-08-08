@@ -1,6 +1,6 @@
 from django.contrib import admin
 from .models import (
-    UserCredits, PaymentOrder, CreditTransaction, CreditPackage, SupportTicket
+    UserCredits, PaymentOrder, CreditTransaction, CreditPackage, SupportTicket, ProcessedFileCount
 )
 
 @admin.register(UserCredits)
@@ -83,3 +83,10 @@ class SupportTicketAdmin(admin.ModelAdmin):
     list_filter = ['status', 'priority']
     search_fields = ['subject', 'description']
     readonly_fields = ['created_at', 'updated_at']
+
+@admin.register(ProcessedFileCount)
+class ProcessedFileCountAdmin(admin.ModelAdmin):
+    list_display = ['user', 'count', 'last_updated']
+    list_filter = ['last_updated']
+    search_fields = ['user__username']
+    readonly_fields = ['last_updated']

@@ -106,6 +106,12 @@ class UploadEProcessarPDFView(View):
             logger.info(f"Files received: {len(files)}")
             logger.info(f"Required credits: {required_credits}")
             logger.info(f"User credits: {user_credits.balance}")
+
+            if not files:
+                return JsonResponse({
+                    'error': 'Nenhum arquivo enviado',
+                    'message': 'Por favor, envie pelo menos um arquivo PDF'
+                }, status=400)
             
             if not user_credits.has_credits(required_credits):
                 return JsonResponse({

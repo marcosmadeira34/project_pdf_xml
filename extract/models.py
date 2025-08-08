@@ -7,6 +7,8 @@ from django.conf import settings
 
 
 
+
+
 class UserCredits(models.Model):
     """Modelo para gerenciar créditos dos usuários"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='credits')
@@ -182,8 +184,6 @@ class CreditPackage(models.Model):
 
 
 # extract/models.py
-from django.db import models
-import uuid
 
 class ArquivoZip(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -198,6 +198,7 @@ class ArquivoZip(models.Model):
     def __str__(self):
         return f"{self.nome_arquivo or 'ZIP'} - {self.criado_em.strftime('%d/%m/%Y %H:%M')}"
     
+
 
 # Modelo para tickets de suporte
 class SupportTicket(models.Model):
@@ -248,7 +249,6 @@ class SupportTicket(models.Model):
     
 
 
-
 class SupportTicketAttachment(models.Model):
     ticket = models.ForeignKey(SupportTicket, on_delete=models.CASCADE, related_name="attachments")
     file = models.FileField(upload_to="support_attachments/")
@@ -263,3 +263,17 @@ class TaskStatusModel(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, help_text="Data de criação do status")
     updated_at = models.DateTimeField(auto_now=True, help_text="Data da última atualização do status")
     result = models.TextField(blank=True, null=True, help_text="Resultado da tarefa (se aplicável)")
+
+
+# modelo para contar o número de arquivos processados
+class ProcessedFileCount(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='processed_file_counts')
+    count = models.IntegerField(default=0, help_text="Número de arquivos processados")
+    last_updated = models.DateTimeField(auto_now=True, help_text="Data da última atualização do contador")
+    
+    class Meta:
+        verbose_name = "Contador de Arquivos Processados"
+        verbose_name_plural = "Contadores de Arquivos Processados"
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.count} arquivos processados"
