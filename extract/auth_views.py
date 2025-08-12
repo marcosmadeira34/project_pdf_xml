@@ -20,7 +20,7 @@ class AuthLoginView(View):
     def get(self, request):
         """Retorna informações sobre o endpoint de login"""
         return JsonResponse({
-            'endpoint': '/auth/login/',
+            'endpoint': '/api/auth/login/',
             'method': 'POST',
             'description': 'Endpoint para autenticação JWT',
             'required_fields': ['username', 'password'],
