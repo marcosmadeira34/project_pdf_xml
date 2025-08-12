@@ -53,6 +53,7 @@ class JWTAuthenticationMiddleware:
             for exempt in self.exempt_paths
         )
         
+        
         if needs_auth:
             auth_header = request.META.get('HTTP_AUTHORIZATION', '')
             
