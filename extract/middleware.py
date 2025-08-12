@@ -2,6 +2,8 @@ from django.http import JsonResponse
 from django.urls import resolve
 from django.contrib.auth.models import AnonymousUser
 import json
+
+from pkg_resources import normalize_path
 from .jwt_auth import JWTAuthenticationService
 from django.contrib.auth.models import AnonymousUser
 from django.http import HttpResponse
@@ -28,6 +30,11 @@ class JWTAuthenticationMiddleware:
         path = request.path_info
         print(f"[JWTAuthMiddleware] Request path: {path}")
 
+        def normalize_path(p):
+            return p[:-1] if p.endswith('/') else p
+
+        path_norm = normalize_path(path)
+
         # ✅ Libera requisições OPTIONS (CORS preflight)
         if request.method == 'OPTIONS':
             # Retornar resposta direta com cabeçalhos CORS            
@@ -41,7 +48,7 @@ class JWTAuthenticationMiddleware:
         
         
         # Verifica se a URL precisa de autenticação
-        needs_auth = not any(path.startswith(exempt.rstrip('/')) for exempt in self.exempt_paths)
+        needs_auth = not any(normalize_path(exempt) == path_norm for exempt in self.exempt_paths)
         
         if needs_auth:
             # Extrai token do header Authorization
