@@ -13,19 +13,20 @@ class JWTAuthenticationMiddleware:
         # URLs que não precisam de autenticação
         self.exempt_paths = [
             '/admin/',
-            '/auth/login/',
-            '/auth/refresh/',
-            '/credits/packages/',  # Permitir ver pacotes sem login
-            '/download-zip/',
-            '/login/',
-            '/logout/',
-            '/user-profile/',  # Permitir acesso ao perfil do usuário sem autenticação
+            '/api/auth/login/',
+            '/api/auth/refresh/',
+            '/api/credits/packages/',  # Permitir ver pacotes sem login
+            '/api/download-zip/',
+            '/api/login/',
+            '/api/logout/',
+            '/api/user-profile/',  # Permitir acesso ao perfil do usuário sem autenticação
             
             
         ]
 
     def __call__(self, request):
         path = request.path_info
+        print(f"[JWTAuthMiddleware] Request path: {path}")
 
         # ✅ Libera requisições OPTIONS (CORS preflight)
         if request.method == 'OPTIONS':
@@ -40,7 +41,7 @@ class JWTAuthenticationMiddleware:
         
         
         # Verifica se a URL precisa de autenticação
-        needs_auth = not any(path.startswith(exempt) for exempt in self.exempt_paths)
+        needs_auth = not any(path.startswith(exempt.rstrip('/')) for exempt in self.exempt_paths)
         
         if needs_auth:
             # Extrai token do header Authorization
