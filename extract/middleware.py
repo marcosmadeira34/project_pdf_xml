@@ -17,21 +17,21 @@ class JWTAuthenticationMiddleware:
             '/admin/',
             '/api/auth/login/',
             '/api/auth/refresh/',
-            '/api/credits/packages/',  # Permitir ver pacotes sem login
+            '/api/credits/packages/',
             '/api/download-zip/',
             '/api/login/',
             '/api/logout/',
-            '/api/user-profile/',  # Permitir acesso ao perfil do usuário sem autenticação
-            
-            
+            '/api/user-profile/',
         ]
+
+        
 
     def __call__(self, request):
         path = request.path_info
-        print(f"[JWTAuthMiddleware] Request path: {path}")
+        print(f"[JWTAuthMiddleware] Path recebido: {repr(request.path_info)}")
 
         def normalize_path(p):
-            return p[:-1] if p.endswith('/') else p
+            return p.rstrip('/')
 
         path_norm = normalize_path(path)
 
@@ -47,8 +47,11 @@ class JWTAuthenticationMiddleware:
             return response
         
         
-        # Verifica se a URL precisa de autenticação
-        needs_auth = not any(normalize_path(exempt) == path_norm for exempt in self.exempt_paths)
+        # 🔍 Verifica se a URL precisa de autenticação
+        needs_auth = not any(
+            path_norm == normalize_path(exempt)
+            for exempt in self.exempt_paths
+        )
         
         if needs_auth:
             # Extrai token do header Authorization
