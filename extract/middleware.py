@@ -17,6 +17,7 @@ class JWTAuthenticationMiddleware:
         self.exempt_paths = [
             '/admin/',
             '/api/auth/login/',
+            '/api/auth/login',
             '/api/auth/refresh/',
             '/api/credits/packages/',
             '/api/download-zip/',
@@ -48,7 +49,7 @@ class JWTAuthenticationMiddleware:
         
         # 🔹 Corrigido: permitir qualquer rota que comece com uma das rotas liberadas
         needs_auth = not any(
-            path_norm.startswith(normalize_path(exempt))
+            normalize_path(path_norm).startswith(normalize_path(exempt))
             for exempt in self.exempt_paths
         )
         
