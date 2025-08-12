@@ -49,11 +49,13 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'extract',
+    'corsheaders'
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware", 
     'django.middleware.security.SecurityMiddleware',
-    'extract.middleware.CORSMiddleware',  # CORS customizado para Streamlit
+    # 'extract.middleware.CORSMiddleware',  # CORS customizado para Streamlit
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -64,7 +66,12 @@ MIDDLEWARE = [
     'extract.middleware.JWTAuthenticationMiddleware',  # Middleware JWT
 ]
 
-# Temporariamente
+# Configurações de CORS:
+CORS_ALLOWED_ORIGINS = [
+    "https://www.alivee.com.br",
+    "https://alivee.com.br",
+]
+
 CORS_ALLOW_CREDENTIALS = True
 
 ROOT_URLCONF = 'nfse_abrasf.urls'
