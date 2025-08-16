@@ -39,6 +39,7 @@ urlpatterns = [
     path("support-ticket/", SupportTicketView.as_view(), name="support-ticket"),  # Nova view para tickets de suporte
 
 
+
     # Endpoints de autenticação JWT
     path("auth/login/", AuthLoginView.as_view(), name="auth-login"),
     path("auth/refresh/", AuthRefreshView.as_view(), name="auth-refresh"),
