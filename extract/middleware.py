@@ -24,6 +24,7 @@ class JWTAuthenticationMiddleware:
             '/api/login/',
             '/api/logout/',
             '/api/user-profile/',
+            '/api/task-status/<str:task_id>/'
         ]
 
         

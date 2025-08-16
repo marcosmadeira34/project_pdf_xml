@@ -42,8 +42,11 @@ def processar_pdfs(self, file_keys):
     try:
         processor = DocumentAIProcessor()
         project_id = os.getenv("PROJECT_ID")
+        print(f"Project ID: {project_id}")
         location = os.getenv("LOCATION")
+        print(f"Location: {location}")
         processor_id = os.getenv("PROCESSOR_ID")
+        print(f"Processor ID: {processor_id}")
 
         total_files = len(file_keys)
         processed_files = 0
