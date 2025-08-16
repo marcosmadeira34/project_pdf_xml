@@ -3,6 +3,10 @@ import os
 from celery import Celery
 import ssl
 
+from celery.schedules import crontab
+
+import logging
+
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "nfse_abrasf.settings")
 
 app = Celery("nfse_abrasf")
@@ -28,7 +32,12 @@ app.conf.broker_transport_options = {
 app.conf.broker_connection_retry_on_startup = True
 app.conf.broker_heartbeat = 30  # envia sinal a cada 30s para manter conexão viva
 
-
+app.conf.beat_schedule = {
+    "heartbeat-task-every-minute": {
+        "task": "nfse_abrasf.tasks.heartbeat_task",
+        "schedule": crontab(minute="*"),  # todo minuto
+    },
+}
 
 if redis_url.startswith("rediss://"):
     ssl_options = {"ssl_cert_reqs": ssl.CERT_NONE}

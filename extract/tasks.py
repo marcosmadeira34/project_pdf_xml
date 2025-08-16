@@ -233,3 +233,9 @@ def gerar_excel(self, files_data):
         "zip_bytes": base64.b64encode(zip_buffer.getvalue()).decode(),  # Retorna os bytes como string Base64
         "erros": erros
     }
+
+
+@shared_task
+def heartbeat_task():
+    logger.info("Celery keep-alive: worker ainda está ativo.")
+    return "ok"
