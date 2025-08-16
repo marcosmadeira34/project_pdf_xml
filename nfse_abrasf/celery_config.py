@@ -18,6 +18,18 @@ redis_url = os.getenv('REDIS_TLS_URL', os.getenv('REDIS_URL', 'redis://localhost
 app.conf.broker_url = redis_url
 app.conf.result_backend = redis_url
 
+app.conf.broker_transport_options = {
+    "visibility_timeout": 3600,
+    "socket_keepalive": True,
+    "retry_on_timeout": True,
+    "socket_connect_timeout": 30,   # tenta reconectar mais rápido
+    "socket_timeout": 30,           # evita ficar preso indefinidamente
+}
+app.conf.broker_connection_retry_on_startup = True
+app.conf.broker_heartbeat = 30  # envia sinal a cada 30s para manter conexão viva
+
+
+
 if redis_url.startswith("rediss://"):
     ssl_options = {"ssl_cert_reqs": ssl.CERT_NONE}
     app.conf.broker_use_ssl = ssl_options
