@@ -237,5 +237,6 @@ def gerar_excel(self, files_data):
 
 @shared_task
 def heartbeat_task():
-    logger.info("Celery keep-alive: worker ainda está ativo.")
+    logger.info("Celery keep-alive: worker ainda está ativo no servidor")
     return "ok"
+
