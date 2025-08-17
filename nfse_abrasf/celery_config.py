@@ -32,6 +32,9 @@ app.conf.broker_transport_options = {
 app.conf.broker_connection_retry_on_startup = True
 app.conf.broker_heartbeat = 30  # envia sinal a cada 30s para manter conexão viva
 
+# Descobre tasks automaticamente em apps instalados
+app.autodiscover_tasks()
+
 app.conf.beat_schedule = {
     "heartbeat-task-every-minute": {
         "task": "nfse_abrasf.tasks.heartbeat_task",
@@ -58,5 +61,3 @@ if redis_url.startswith("rediss://"):
 # }
 
 
-# Descobre tasks automaticamente em apps instalados
-app.autodiscover_tasks()
