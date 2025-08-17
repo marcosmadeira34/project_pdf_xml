@@ -37,7 +37,7 @@ app.autodiscover_tasks()
 
 app.conf.beat_schedule = {
     "heartbeat-task-every-minute": {
-        "task": "nfse_abrasf.tasks.heartbeat_task",
+        "task": "extract.tasks.heartbeat_task",
         "schedule": crontab(minute="*"),  # todo minuto
     },
 }
