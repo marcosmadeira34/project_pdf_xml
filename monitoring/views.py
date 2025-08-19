@@ -37,7 +37,7 @@ class WhatsAppWebhookView(View):
 
         elif body in ["logs worker", "5"]:
             try:
-                result = subprocess.getoutput("journalctl -u celery-worker --no-pager -l")
+                result = subprocess.getoutput("journalctl -u celery-worker --no-pager -n 50")
                 reply = f"📜 Logs do worker:\n{result[:500]}..."
             except Exception as e:
                 reply = f"❌ Erro ao obter logs do worker: {str(e)}"
