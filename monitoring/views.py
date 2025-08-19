@@ -44,7 +44,7 @@ class WhatsAppWebhookView(View):
 
         elif body in ["logs beat", "6"]:
             try:
-                result = subprocess.getoutput("journalctl -u celery-beat --no-pager -l")
+                result = subprocess.getoutput("journalctl -u celery-beat --no-pager -n 50")
                 reply = f"📜 Logs do beat:\n{result[:500]}..."
             except Exception as e:
                 reply = f"❌ Erro ao obter logs do beat: {str(e)}"
@@ -52,14 +52,14 @@ class WhatsAppWebhookView(View):
 
         elif body in ["logs gunicorn", "7"]:
             try:
-                result = subprocess.getoutput("journalctl -u gunicorn --no-pager -l")
+                result = subprocess.getoutput("journalctl -u gunicorn --no-pager -n 50")
                 reply = f"📜 Logs do gunicorn:\n{result[:500]}..."
             except Exception as e:
                 reply = f"❌ Erro ao obter logs do gunicorn: {str(e)}"
 
         elif body in ["logs nginx", "8"]:
             try:
-                result = subprocess.getoutput("journalctl -u nginx --no-pager -l")
+                result = subprocess.getoutput("journalctl -u nginx --no-pager -n 50")
                 reply = f"📜 Logs do nginx:\n{result[:500]}..."
             except Exception as e:
                 reply = f"❌ Erro ao obter logs do nginx: {str(e)}"
