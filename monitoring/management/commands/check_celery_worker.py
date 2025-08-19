@@ -2,6 +2,7 @@ import subprocess
 from django.core.management.base import BaseCommand
 from monitoring.utils import send_whatsapp_alert
 import os
+import json
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 STATE_FILE = os.path.join(BASE_DIR, "celery_status.json")
