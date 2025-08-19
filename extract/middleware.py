@@ -25,7 +25,8 @@ class JWTAuthenticationMiddleware:
             '/api/logout/',
             '/api/user-profile/',
             '/api/task-status/<str:task_id>/',
-            '/api/monitoring/webhook/whatsapp/'
+            '/api/monitoring/webhook/whatsapp',
+            '/api/monitoring/webhook/whatsapp/',
         ]
 
         
