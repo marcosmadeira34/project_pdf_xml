@@ -82,3 +82,4 @@ redis
 qrcode
 boto3
 rapidfuzz
+twilio

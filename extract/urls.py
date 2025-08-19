@@ -9,7 +9,11 @@ from .views import (
     StreamlitAppRedirectView,
     SendXMLToExternalAPIView,
     user_profile,
-    SupportTicketView
+    SupportTicketView,
+    UserSettingsView,
+    SettingsHistoryView,
+    GenerateApiKeyView,
+    DeleteAccountView,
 )
 from .auth_views import (
     AuthLoginView,
@@ -54,6 +58,13 @@ urlpatterns = [
     path("credits/create-payment/", CreatePaymentOrderView.as_view(), name="create-payment-order"),
     path("credits/confirm-payment/", ConfirmPaymentView.as_view(), name="confirm-payment"),
     path("credits/payment-status/<uuid:order_id>/", PaymentOrderStatusView.as_view(), name="payment-order-status"),
+
+
+    # Endpoints de configurações de usuários
+    path("user-settings/", UserSettingsView.as_view(), name="user-settings"),
+    path("settings-history/", SettingsHistoryView.as_view(), name="settings-history"),
+    path("generate-api-key/", GenerateApiKeyView.as_view(), name="generate-api-key"),
+    path("delete-account/", DeleteAccountView.as_view(), name="delete-account"),
 ]
 
 

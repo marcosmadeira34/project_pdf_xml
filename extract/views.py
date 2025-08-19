@@ -13,12 +13,14 @@ from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import render, redirect
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.http import FileResponse, Http404
 from .models import ArquivoZip, TaskStatusModel
 from django.http import FileResponse, Http404
 from io import BytesIO
-from .models import ArquivoZip, UserCredits, SupportTicket, SupportTicketAttachment
+from .models import (ArquivoZip, UserCredits, SupportTicket, 
+                     SupportTicketAttachment, UserSettings, SettingsHistory)
 # Importa as classes e funções do seu processador e tarefas Celery
 # Certifique-se de que esses imports estão corretos para o seu projeto
 from extract.services import DocumentAIProcessor
@@ -474,3 +476,218 @@ class SupportTicketView(View):
         tickets = SupportTicket.objects.filter(user=request.user).order_by('-created_at')
         data = [model_to_dict(ticket) for ticket in tickets]
         return JsonResponse(data, safe=False)
+    
+
+
+# classe para configurações de usuários
+@method_decorator(csrf_exempt, name='dispatch')
+@method_decorator(login_required, name='dispatch')
+class UserSettingsView(View):
+    def get(self, request):
+        try:
+            # Obter ou criar as configurações do usuário com valores padrão
+            settings, created = UserSettings.objects.get_or_create(
+                user=request.user,
+                defaults={
+                    "notifications":{
+                        "emailConversions": True,
+                        "emailTickets": True,
+                        "pushNotifications": False,
+                        "weeklyReport": True
+                    },
+
+                    "preferences": {
+                        "theme": "system",
+                        "language": "pt-BR",
+                        "timezone": "America/Sao_Paulo",
+                        "autoDownload": False,
+                        "deleteAfterDays": 30
+                    },
+                    "security": {
+                        "twoFactorAuth": False,
+                        "sessionTimeout": "24",
+                        "loginNotifications": True
+                    },
+                    "api_key": f"sk_{uuid.uuid4().hex[:12]}"
+                }
+            )
+            return JsonResponse({
+                "sucess": True,
+                "settings": {
+                    "notifications": settings.notifications,
+                    "preferences" : settings.preferences,
+                    "security": settings.security,
+                    "api_key": settings.api_key
+                }
+            })
+        
+        except Exception as e:
+            return JsonResponse({
+                "success": False,
+                "error": str(e)
+            }, status=500)
+        
+
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            # Obter as configurações atuais
+            settings, created = UserSettings.objects.get_or_create(user=request.user)
+
+            # Salvar as valores antigos para o histórico
+            old_notifications = settings.notifications.copy()
+            old_preferences = settings.preferences.copy()
+            old_security = settings.security.copy()
+
+
+            # Atualizar os campos fornecidos
+            if "notificatios" in data:
+                settings.notifications = data["notifications"]
+
+            if "preferences" in data:
+                settings.preferences = data["preferences"]
+
+            if "security" in data:
+                settings.security = data["security"]
+
+            settings.save()
+
+            # Registrar alterações no histórico
+            if "notifications" in data and old_notifications != data["notifications"]:
+                SettingsHistory.objects.create(
+                    user = request.user,
+                    field = "notifications",
+                    old_value = old_notifications,
+                    new_value = data["notifications"],
+                    changed_by = request.user
+                )
+
+            if 'preferences' in data and old_preferences != data['preferences']:
+                SettingsHistory.objects.create(
+                    user=request.user,
+                    field='preferences',
+                    old_value=old_preferences,
+                    new_value=data['preferences'],
+                    changed_by=request.user
+                )
+            
+            if 'security' in data and old_security != data['security']:
+                SettingsHistory.objects.create(
+                    user=request.user,
+                    field='security',
+                    old_value=old_security,
+                    new_value=data['security'],
+                    changed_by=request.user
+                )
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Configurações atualizadas com sucesso',
+                'settings': {
+                    'notifications': settings.notifications,
+                    'preferences': settings.preferences,
+                    'security': settings.security,
+                    'api_key': settings.api_key
+                }
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=500)
+
+@method_decorator(csrf_exempt, name='dispatch')
+@method_decorator(login_required, name='dispatch')
+class SettingsHistoryView(View):
+    def get(self, request):
+        try:
+            # Obter o histórico de configurações do usuário
+            history = SettingsHistory.objects.filter(user=request.user)
+            
+            # Serializar os dados
+            history_data = []
+            for entry in history:
+                history_data.append({
+                    'field': entry.field,
+                    'old_value': entry.old_value,
+                    'new_value': entry.new_value,
+                    'changed_at': entry.changed_at.isoformat(),
+                    'changed_by': entry.changed_by.username if entry.changed_by else None
+                })
+            
+            return JsonResponse({
+                'success': True,
+                'history': history_data
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=500)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+@method_decorator(login_required, name='dispatch')
+class GenerateApiKeyView(View):
+    def post(self, request):
+        try:
+            # Obter as configurações do usuário
+            settings, created = UserSettings.objects.get_or_create(user=request.user)
+            
+            # Salvar chave antiga para histórico
+            old_api_key = settings.api_key
+            
+            # Gerar nova chave de API
+            new_api_key = f"sk_{uuid.uuid4().hex[:12]}"
+            settings.api_key = new_api_key
+            settings.save()
+            
+            # Registrar alteração no histórico
+            SettingsHistory.objects.create(
+                user=request.user,
+                field='api_key',
+                old_value=old_api_key,
+                new_value=new_api_key,
+                changed_by=request.user
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'api_key': new_api_key,
+                'message': 'Nova chave de API gerada com sucesso'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=500)
+
+@method_decorator(csrf_exempt, name='dispatch')
+@method_decorator(login_required, name='dispatch')
+class DeleteAccountView(View):
+    def post(self, request):
+        try:
+            # Verificar senha do usuário para confirmação
+            data = json.loads(request.body)
+            password = data.get('password')
+            
+            if not password or not request.user.check_password(password):
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Senha incorreta'
+                }, status=400)
+            
+            # Marcar usuário como inativo em vez de excluir
+            request.user.is_active = False
+            request.user.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Conta desativada com sucesso'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=500)
+

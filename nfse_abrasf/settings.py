@@ -49,7 +49,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'extract',
-    'corsheaders'
+    'corsheaders',
+    'monitoring',
 ]
 
 MIDDLEWARE = [
@@ -70,6 +71,10 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     "https://www.alivee.com.br",
     "https://alivee.com.br",
+    "http://localhost:8080",
+    "http://localhost:8081",
+    "http://127.0.0.1:8000",
+    "https://a37fe1d17335.ngrok-free.app"
 ]
 
 CORS_ALLOW_CREDENTIALS = True

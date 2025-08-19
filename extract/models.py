@@ -277,3 +277,48 @@ class ProcessedFileCount(models.Model):
     
     def __str__(self):
         return f"{self.user.username} - {self.count} arquivos processados"
+
+
+
+# modelo para configurações de usuários
+class UserSettings(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='settings')
+    notifications = models.JSONField(default=dict, help_text="Configurações de notificações")
+    preferences = models.JSONField(default=dict, help_text="Preferências do usuário")
+    security = models.JSONField(default=dict, help_text="Configurações de segurança")
+    api_key = models.CharField(max_length=255, blank=True, null=True, help_text="Chave da API do usuário")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Configurações do Usuário"
+        verbose_name_plural = "Configurações dos Usuários"
+
+    def __str__(self):
+        return f"Configurações de {self.user.username}"
+    
+
+# modelo para historico de alterações de configuração
+class SettingsHistory(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='settings_history')
+    field = models.CharField(max_length=50, help_text="Campo alterado")
+    old_value = models.JSONField(help_text="Valor anterior")
+    new_value = models.JSONField(help_text="Novo valor")
+    changed_at = models.DateTimeField(auto_now_add=True)
+    changed_by = models.ForeignKey(
+        User, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='settings_changes_made'
+    )
+
+    class Meta:
+        verbose_name = "Histórico de Configurações"
+        verbose_name_plural = "Históricos de Configurações"
+        ordering = ['-changed_at']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.field} alterado em {self.changed_at.strftime('%d/%m/%Y %H:%M')}"
+
+
