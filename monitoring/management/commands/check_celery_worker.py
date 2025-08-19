@@ -12,9 +12,13 @@ class Command(BaseCommand):
 
     def load_last_status(self):
         if os.path.exists(STATE_FILE):
-            with open(STATE_FILE, "r") as f:
-                data = json.load(f)
-                return data.get("status", True)  # assume ativo se não existir
+            try:
+                with open(STATE_FILE, "r") as f:
+                    data = json.load(f)
+                    return data.get("status", True)  # assume ativo se não existir
+            except (json.JSONDecodeError, FileNotFoundError):
+                # arquivo vazio ou inválido
+                return True
         return True
 
     def save_status(self, status: bool):
