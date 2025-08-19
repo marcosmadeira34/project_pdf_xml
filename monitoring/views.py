@@ -36,20 +36,33 @@ class WhatsAppWebhookView(View):
             reply = "🔄 Servidor reiniciando..."
 
         elif body in ["logs worker", "5"]:
-            result = subprocess.getoutput("journalctl -u celery-worker -f --no-pager -l")
-            reply = f"📜 Logs do worker:\n{result[:500]}..."
+            try:
+                result = subprocess.getoutput("journalctl -u celery-worker --no-pager -l")
+                reply = f"📜 Logs do worker:\n{result[:500]}..."
+            except Exception as e:
+                reply = f"❌ Erro ao obter logs do worker: {str(e)}"
 
         elif body in ["logs beat", "6"]:
-            result = subprocess.getoutput("journalctl -u celery-beat -f --no-pager -l")
+            try:
+                result = subprocess.getoutput("journalctl -u celery-beat --no-pager -l")
+                reply = f"📜 Logs do beat:\n{result[:500]}..."
+            except Exception as e:
+                reply = f"❌ Erro ao obter logs do beat: {str(e)}"
             reply = f"📜 Logs do beat:\n{result[:500]}..."
 
         elif body in ["logs gunicorn", "7"]:
-            result = subprocess.getoutput("journalctl -u gunicorn -f --no-pager -l")
-            reply = f"📜 Logs do gunicorn:\n{result[:500]}..."
+            try:
+                result = subprocess.getoutput("journalctl -u gunicorn --no-pager -l")
+                reply = f"📜 Logs do gunicorn:\n{result[:500]}..."
+            except Exception as e:
+                reply = f"❌ Erro ao obter logs do gunicorn: {str(e)}"
 
         elif body in ["logs nginx", "8"]:
-            result = subprocess.getoutput("journalctl -u nginx -f --no-pager -l")
-            reply = f"📜 Logs do nginx:\n{result[:500]}..."
+            try:
+                result = subprocess.getoutput("journalctl -u nginx --no-pager -l")
+                reply = f"📜 Logs do nginx:\n{result[:500]}..."
+            except Exception as e:
+                reply = f"❌ Erro ao obter logs do nginx: {str(e)}"
 
         # Twilio response
         twilio_resp = MessagingResponse()
