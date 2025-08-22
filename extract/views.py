@@ -32,6 +32,7 @@ from django.core.mail import send_mail
 from django.forms.models import model_to_dict
 from django.contrib.auth.models import User
 from extract.jwt_auth import JWTAuthenticationService
+from .minio_service import generate_presigned_upload_url
 
 
 logger = logging.getLogger(__name__)
@@ -691,3 +692,22 @@ class DeleteAccountView(View):
                 'error': str(e)
             }, status=500)
 
+
+class PresignedUrlView(View):
+    """
+    View para gerar presigned_url
+    """
+    def post(self, request):
+        try:
+            # tenta JSON primeiro
+            data = json.loads(request.body.decode("utf-8"))
+            filename = data.get("filename")
+        except Exception:
+            # fallback para form-data
+            filename = request.POST.get("filename")
+
+        if not filename:
+            return JsonResponse({"error": "filename is required"}, status=400)
+
+        presigned = generate_presigned_upload_url(filename)
+        return JsonResponse(presigned, status=200)

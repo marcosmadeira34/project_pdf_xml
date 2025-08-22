@@ -35,7 +35,7 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 DEBUG = True
 
 ALLOWED_HOSTS = ['*', 'https://nfse-abrasf-project-633c01390d1d.herokuapp.com/', 
-                 'alive.com.br', 'www.alive.com.br', '3.132.214.90']
+                 'alive.com.br', 'www.alive.com.br', '3.132.214.90', 'http://127.0.0.1:8001']
 
 
 # Application definition
@@ -71,6 +71,10 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     "https://www.alivee.com.br",
     "https://alivee.com.br",
+    "http://127.0.0.1:8001",
+    "http://127.0.0.1:8000",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
