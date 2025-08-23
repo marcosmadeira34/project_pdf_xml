@@ -35,8 +35,8 @@ def update_task_status(task_id, status, result=None):
 @shared_task(bind=True)
 def processar_pdfs(self, file_keys):
     """
-    Processa múltiplos PDFs e retorna XMLs gerados
-    files_data: dict {nome_arquivo: bytes_content}
+    Processa múltiplos PDFs já enviados via presigned URL para o MinIO.
+    :param file_keys: lista de chaves (keys) no bucket, ex: ["uploads/20240823_arquivo1.pdf"]
     """
     update_task_status(self.request.id, 'PROCESSANDO')
     try:
@@ -68,9 +68,7 @@ def processar_pdfs(self, file_keys):
                     pdf_bytes = download_file_from_minio(file_key)
                     logger.info(f"Arquivo baixado: {file_name}, tamanho: {len(pdf_bytes)} bytes")
                     
-                                     
-                    logger.info(f"Processando arquivo baixado: {file_name}")
-                    
+                 
                     # Processa com DocumentAI
                     document_json = processor.processar_pdf(project_id, location, processor_id, pdf_bytes)
                     logger.info(f"Documento processado: {file_name}")

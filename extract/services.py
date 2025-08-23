@@ -224,10 +224,6 @@ class CidadeIBGELoader:
 
 
 
-
-    
-    
-
 class ExcelGenerator:
     """Gera um arquivo Excel com os dados extraídos."""
     
