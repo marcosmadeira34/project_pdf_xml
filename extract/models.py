@@ -252,6 +252,7 @@ class SupportTicket(models.Model):
 class SupportTicketAttachment(models.Model):
     ticket = models.ForeignKey(SupportTicket, on_delete=models.CASCADE, related_name="attachments")
     file = models.FileField(upload_to="support_attachments/")
+    content_type = models.CharField(max_length=100, blank=True)  # Novo 
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
 
@@ -322,3 +323,15 @@ class SettingsHistory(models.Model):
         return f"{self.user.username} - {self.field} alterado em {self.changed_at.strftime('%d/%m/%Y %H:%M')}"
 
 
+
+class ProfileModel(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    user_name = models.CharField(max_length=150, blank=True, null=True)
+    phone_number = models.CharField(max_length=20, blank=True, null=True)
+    firm = models.CharField(max_length=100, blank=True, null=True)
+    email = models.EmailField(max_length=254, blank=True, null=True)
+    role = models.CharField(max_length=50, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    

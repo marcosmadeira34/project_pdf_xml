@@ -14,6 +14,7 @@ from .views import (
     SettingsHistoryView,
     GenerateApiKeyView,
     DeleteAccountView,
+    ProfileView,
 )
 from .auth_views import (
     AuthLoginView,
@@ -65,6 +66,9 @@ urlpatterns = [
     path("settings-history/", SettingsHistoryView.as_view(), name="settings-history"),
     path("generate-api-key/", GenerateApiKeyView.as_view(), name="generate-api-key"),
     path("delete-account/", DeleteAccountView.as_view(), name="delete-account"),
+
+    # Endpoints de perfil
+    path("profile/", ProfileView.as_view(), name="profile"),
 ]
 
 

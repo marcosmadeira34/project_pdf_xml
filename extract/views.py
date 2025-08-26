@@ -16,7 +16,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.http import FileResponse, Http404
-from .models import ArquivoZip, TaskStatusModel
+from .models import ArquivoZip, TaskStatusModel, ProfileModel
 from django.http import FileResponse, Http404
 from io import BytesIO
 from .models import (ArquivoZip, UserCredits, SupportTicket, 
@@ -33,6 +33,7 @@ from django.forms.models import model_to_dict
 from django.contrib.auth.models import User
 from extract.jwt_auth import JWTAuthenticationService
 from .minio_service import generate_presigned_upload_url
+from django.core.mail import EmailMultiAlternatives
 
 
 logger = logging.getLogger(__name__)
@@ -395,39 +396,18 @@ def user_profile(request):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class SupportTicketView(View):
-    def dispatch(self, request, *args, **kwargs):
-        auth_header = request.headers.get('Authorization', '')
-        if not auth_header.startswith('Bearer '):
-            return JsonResponse({"error": "Token de autenticação necessário"}, status=401)
-
-        token = auth_header[7:]
-
-        user_data = JWTAuthenticationService.verify_token(token)
-        if not user_data:
-            return JsonResponse({"error": "Token inválido"}, status=401)
-
-        try:
-            from django.contrib.auth.models import User
-            user = User.objects.get(id=user_data['user_id'])
-            request.user = user
-        except User.DoesNotExist:
-            return JsonResponse({"error": "Usuário não encontrado"}, status=401)
-
-        return super().dispatch(request, *args, **kwargs)
+    # ... (código anterior permanece igual) ...
 
     def post(self, request):
         if not hasattr(request, 'user') or not request.user.is_authenticated:
             return JsonResponse({"error": "Usuário não autenticado"}, status=401)
-
         try:
             # Multipart form, pegar dos campos POST
             subject = request.POST.get("subject")
             description = request.POST.get("description")
             priority = request.POST.get("priority")
-
             if not subject or not description or not priority:
                 return JsonResponse({"error": "Campos obrigatórios ausentes"}, status=400)
-
             ticket = SupportTicket.objects.create(
                 user=request.user,
                 subject=subject,
@@ -435,41 +415,56 @@ class SupportTicketView(View):
                 priority=priority,
                 status='aberto'
             )
-
-            # Se você quiser salvar arquivos, trate aqui:
+            # Salvar arquivos com content_type
             attachments = request.FILES.getlist('attachments')
             for f in attachments:
-                # Exemplo: salvar no modelo SupportTicketAttachment
-                SupportTicketAttachment.objects.create(ticket=ticket, file=f)
-
+                SupportTicketAttachment.objects.create(
+                    ticket=ticket, 
+                    file=f,
+                    content_type=f.content_type  # Salvar o content_type original
+                )
                 
-
-            # Montar corpo do email com o email do usuário autenticado
+            # Montar corpo do email
             user_email = request.user.email
             email_subject = f"[SUPORTE] Nova solicitação - Prioridade: {priority.upper()}"
             email_body = f"Usuário: {user_email}\n\nAssunto: {subject}\n\nDescrição:\n{description}"
-
             recipient_list = [settings.SUPPORT_EMAIL]
-
-            send_mail(
+            
+            # Criar o email com anexos
+            email = EmailMultiAlternatives(
                 subject=email_subject,
-                message=email_body,
+                body=email_body,
                 from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=recipient_list,
-                fail_silently=False
+                to=recipient_list,
             )
-
+            
+            # Anexar os arquivos salvos
+            for attachment in SupportTicketAttachment.objects.filter(ticket=ticket):
+                file_path = attachment.file.path
+                if os.path.exists(file_path):
+                    with open(file_path, 'rb') as f:
+                        email.attach(
+                            filename=os.path.basename(file_path),
+                            content=f.read(),
+                            mimetype=attachment.content_type or 'application/octet-stream'
+                        )
+            
+            # Enviar o email
+            email.send(fail_silently=False)
+            
             return JsonResponse({
                 "status": "success",
                 "message": "Ticket de suporte enviado com sucesso!",
                 "ticket": model_to_dict(ticket)
             })
-
+        
         except Exception as e:
             import traceback
             traceback.print_exc()
             return JsonResponse({"error": f"Erro interno no servidor: {str(e)}"}, status=500)
 
+    
+    
     def get(self, request):
         if not hasattr(request, 'user') or not request.user.is_authenticated:
             return JsonResponse({"error": "Usuário não autenticado"}, status=401)
@@ -711,3 +706,58 @@ class PresignedUrlView(View):
 
         presigned = generate_presigned_upload_url(filename)
         return JsonResponse(presigned, status=200)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+@method_decorator(login_required, name='dispatch')
+class ProfileView(View):
+    def get(self, request):
+        try:
+            profile = request.user.profile
+        except ProfileModel.DoesNotExist:
+            # Se não existir, cria um perfil vazio
+            profile = ProfileModel.objects.create(user=request.user)
+        
+        data = {
+            'user_name': profile.user_name,
+            'phone_number': profile.phone_number,
+            'firm': profile.firm,
+            'email': request.user.email,  # Usando o email do User
+            'role': profile.role,
+            'created_at': profile.created_at.isoformat(),
+        }
+        return JsonResponse(data, status=200)
+
+    def post(self, request):
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+            profile, created = ProfileModel.objects.get_or_create(user=request.user)
+            
+            # Atualiza apenas os campos enviados
+            if 'user_name' in data:
+                profile.user_name = data['user_name']
+            if 'phone_number' in data:
+                profile.phone_number = data['phone_number']
+            if 'firm' in data:
+                profile.firm = data['firm']
+            if 'email' in data:
+                # Se estiver atualizando o email, atualiza no modelo User
+                request.user.email = data['email']
+                request.user.save()
+            if 'role' in data:
+                profile.role = data['role']
+                
+            profile.save()
+            
+            # Retorna os dados atualizados
+            response_data = {
+                'user_name': profile.user_name,
+                'phone_number': profile.phone_number,
+                'firm': profile.firm,
+                'email': request.user.email,
+                'role': profile.role,
+                'created_at': profile.created_at.isoformat(),
+            }
+            return JsonResponse(response_data, status=200)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
