@@ -254,7 +254,7 @@ class SupportTicketAttachment(models.Model):
     file = models.FileField(upload_to="support_attachments/")
     content_type = models.CharField(max_length=100, blank=True)  # Novo 
     uploaded_at = models.DateTimeField(auto_now_add=True)
-
+    
 
 
 class TaskStatusModel(models.Model):

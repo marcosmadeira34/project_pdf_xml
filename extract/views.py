@@ -425,11 +425,13 @@ class SupportTicketView(View):
                 )
                 
             # Montar corpo do email
-            user_email = request.user.email
+            user_email = request.user.email if request.user.email else request.user.username
             email_subject = f"[SUPORTE] Nova solicitação - Prioridade: {priority.upper()}"
             email_body = f"Usuário: {user_email}\n\nAssunto: {subject}\n\nDescrição:\n{description}"
             recipient_list = [settings.SUPPORT_EMAIL]
-            
+
+            print(f"O usuário que fez a requisição de suporte foi {user_email}")
+
             # Criar o email com anexos
             email = EmailMultiAlternatives(
                 subject=email_subject,
