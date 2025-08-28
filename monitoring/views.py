@@ -64,13 +64,13 @@ class WhatsAppWebhookView(View):
 
         elif body.lower().startswith("user "):
             try:
-                parts = body.split(" ", 4)  # ["user", "username", "email", "senha"]
-                if len(parts) < 5:
+                parts = body.split(" ", 3)  # divide em ["user", "username", "email", "senha"]
+                if len(parts) < 4:
                     reply = "❌ Formato inválido. Use: user <username> <email_ou_blank> <senha>"
                 else:
-                    username = parts[2].strip()
-                    email_user = parts[3].strip() or ""
-                    password = parts[4].strip()
+                    username = parts[1].strip()
+                    email_user = parts[2].strip() or ""
+                    password = parts[3].strip()
 
                     if not User.objects.filter(username=username).exists():
                         User.objects.create_superuser(username=username, email=email_user, password=password)
