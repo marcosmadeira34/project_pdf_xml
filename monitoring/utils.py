@@ -12,14 +12,14 @@ def send_whatsapp_alert(message: str):
     menu = (
         "\n\nEscolha uma ação:\n"
         "1️⃣ - Status do worker\n"
-        "2️⃣ - Reiniciar worker\n"
-        "3️⃣ - Parar worker\n"
-        "4️⃣ - Reiniciar servidor\n"
-        "5️⃣ - Logs do worker\n"
+        "2️⃣ - Logs do worker\n"
+        "3️⃣ - Logs do beat\n"
+        "4️⃣ - Logs do gunicorn\n"
+        "5️⃣ - Logs do nginx\n"
         "6️⃣ - Criar usuário\n"
-        "7️⃣ - Logs do gunicorn\n"
-        "8️⃣ - Logs do nginx\n"
-        "9️⃣ - Reiniciar worker\n"
+        "7️⃣ - Reiniciar worker\n"
+        # "8️⃣ - Logs do nginx\n"
+        # "9️⃣ - Reiniciar worker\n"
     )
 
     client.messages.create(

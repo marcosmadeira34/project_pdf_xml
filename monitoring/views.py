@@ -126,17 +126,17 @@ class WhatsAppWebhookView(View):
         
 
 
-        elif body in ["restart", "9"]:
+        elif body in ["restart", "7"]:
             subprocess.run(["sudo", "systemctl", "restart", "celery-worker"])
             reply = "♻️ Worker reiniciado com sucesso!"
 
-        elif body in ["stop", "3"]:
-            subprocess.run(["sudo", "systemctl", "stop", "celery-worker"])
-            reply = "🛑 Worker parado!"
+        # elif body in ["stop", "3"]:
+        #     subprocess.run(["sudo", "systemctl", "stop", "celery-worker"])
+        #     reply = "🛑 Worker parado!"
 
-        elif body in ["reboot", "4"]:
-            subprocess.run(["sudo", "reboot"])
-            reply = "🔄 Servidor reiniciando..."
+        # elif body in ["reboot", "4"]:
+        #     subprocess.run(["sudo", "reboot"])
+        #     reply = "🔄 Servidor reiniciando..."
 
         
 
