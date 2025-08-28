@@ -68,10 +68,9 @@ class WhatsAppWebhookView(View):
                 # extrai o nome enviado pelo usuário
                 username = body.replace("user ", "").strip()
                 if not username:
-                    reply = "❌ Nome inválido. Por favor, envie novamente."
-                else:
-                    # armazena temporariamente o username para este número
-                    pending_users[from_number] = username
+                    reply = "❌ Nenhum username enviado. Primeiro: 'user <username>'"
+                else:                    
+                    
                     reply = "📩 Agora envie a senha que deseja usar para o usuário. Ex: 'psw password'"
             except Exception as e:
                 reply = f"❌ Erro ao processar username: {str(e)}"
@@ -80,9 +79,9 @@ class WhatsAppWebhookView(View):
             try:
                 # extrai a senha enviada
                 password = body.replace("psw ", "").strip()
-                username = pending_users.get(from_number)
-                if not username:
-                    reply = "❌ Nenhum username registrado. Primeiro envie: 'user <username>'"
+                
+                if not password:
+                    reply = "❌ Nenhuma senha registrada. Primeiro envie: 'psw <sua_senha>'"
                 elif not password:
                     reply = "❌ Senha inválida. Por favor, envie novamente."
                 else:
@@ -92,7 +91,7 @@ class WhatsAppWebhookView(View):
                     else:
                         reply = f"⚠️ Usuário já existe: {username}"
                     # remove do pending_users após criação
-                    pending_users.pop(from_number, None)
+                    
             except Exception as e:
                 reply = f"❌ Erro ao criar usuário: {str(e)}"
         
