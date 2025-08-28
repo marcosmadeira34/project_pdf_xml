@@ -91,6 +91,7 @@ class WhatsAppWebhookView(View):
 
                         # Cria a ordem de pagamento (substitua "1" pelo ID do produto/quantidade se necessário)
                         order_output = subprocess.getoutput(f"python manage.py create_payment_order {user.id} 1")
+                        print(f"O output da ordem de pagamento é {order_output}")
                         
                         # Extrai o ID da ordem do output, assumindo que o padrão é: "Ordem de pagamento criada com ID <id> para o usuário ..."
                         import re
