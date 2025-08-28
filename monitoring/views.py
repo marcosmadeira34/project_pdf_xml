@@ -9,6 +9,7 @@ from django.contrib.auth.models import User
 from monitoring.utils import send_whatsapp_alert
 import subprocess
 from twilio.twiml.messaging_response import MessagingResponse
+import sys
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -16,9 +17,8 @@ class WhatsAppWebhookView(View):
 
     def post(self, request, *args, **kwargs):
 
-        pending_users = {}  # key = from_number, value = username
+        python_path = sys.executable
 
-        from_number = request.POST.get("From")
         body = request.POST.get("Body", "").strip().lower()
 
         reply = "🤖 Comando não reconhecido. Use: STATUS ou RESTART\nOu responda com:\n1️⃣ Status\n2️⃣ Reiniciar\n3️⃣ Parar\n4️⃣ Reboot servidor"
@@ -90,7 +90,7 @@ class WhatsAppWebhookView(View):
                         reply += f"\n💳 Adicionando 10 créditos de teste para o usuário {username}..."
 
                         # Cria a ordem de pagamento (substitua "1" pelo ID do produto/quantidade se necessário)
-                        order_output = subprocess.getoutput(f"python manage.py create_payment_order {user.id} 1")
+                        order_output = subprocess.getoutput(f"{python_path} manage.py create_payment_order {user.id} 1")
                         print(f"O output da ordem de pagamento é {order_output}")
                         
                         # Extrai o ID da ordem do output, assumindo que o padrão é: "Ordem de pagamento criada com ID <id> para o usuário ..."
@@ -101,8 +101,7 @@ class WhatsAppWebhookView(View):
                             order_id = match.group(1)
                             print(f"O ID da ordem de pagamento é {order_id}")
                             # Confirma o pagamento
-                            confirm_output = subprocess.getoutput(f"python manage.py confirm_payment {order_id}")
-                            print(f"O output da confirmação de pagamento é {confirm_output}")
+                            confirm_output = subprocess.getoutput(f"{python_path} manage.py confirm_payment {order_id}")
                             # Extrai o saldo do output
                             match_saldo = re.search(r"Novo saldo: (\d+)", confirm_output)
                             print(f"O match do saldo é {match_saldo}")
