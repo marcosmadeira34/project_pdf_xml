@@ -15,6 +15,9 @@ from twilio.twiml.messaging_response import MessagingResponse
 class WhatsAppWebhookView(View):
 
     def post(self, request, *args, **kwargs):
+
+        pending_users = {}  # key = from_number, value = username
+
         from_number = request.POST.get("From")
         body = request.POST.get("Body", "").strip().lower()
 
@@ -54,7 +57,9 @@ class WhatsAppWebhookView(View):
                 reply = f"❌ Erro ao obter logs do nginx: {str(e)}"
 
         
-        elif body in ["cria usuário", "6"]:
+        # Dicionário para armazenar username pendente por número do WhatsApp
+        
+        elif body in ["user", "6"]:
             # pede para o usuário enviar o nome desejado
             reply = "📩 Envie o nome que deseja usar para o usuário. Ex: 'user username'"
 
@@ -62,25 +67,35 @@ class WhatsAppWebhookView(View):
             try:
                 # extrai o nome enviado pelo usuário
                 username = body.replace("user ", "").strip()
-                # pede agora para digitar a senha
-                reply = "📩 Envie a senha que deseja usar para o usuário. Ex 'psw password"
-
-                password = body.replace("psw ", "").strip()
                 if not username:
                     reply = "❌ Nome inválido. Por favor, envie novamente."
+                else:
+                    # armazena temporariamente o username para este número
+                    pending_users[from_number] = username
+                    reply = "📩 Agora envie a senha que deseja usar para o usuário. Ex: 'psw password'"
+            except Exception as e:
+                reply = f"❌ Erro ao processar username: {str(e)}"
+
+        elif body.startswith("psw "):
+            try:
+                # extrai a senha enviada
+                password = body.replace("psw ", "").strip()
+                username = pending_users.get(from_number)
+                if not username:
+                    reply = "❌ Nenhum username registrado. Primeiro envie: 'user <username>'"
                 elif not password:
                     reply = "❌ Senha inválida. Por favor, envie novamente."
                 else:
-                    # cria o usuário
-                    
                     if not User.objects.filter(username=username).exists():
                         User.objects.create_user(username=username, password=password)
                         reply = f"✅ Usuário criado com sucesso!\nUsername: {username}\nSenha: {password}"
                     else:
                         reply = f"⚠️ Usuário já existe: {username}"
+                    # remove do pending_users após criação
+                    pending_users.pop(from_number, None)
             except Exception as e:
                 reply = f"❌ Erro ao criar usuário: {str(e)}"
-            
+        
 
 
 
