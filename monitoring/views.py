@@ -56,16 +56,23 @@ class WhatsAppWebhookView(View):
         
         elif body in ["cria usuário", "6"]:
             # pede para o usuário enviar o nome desejado
-            reply = "📩 Envie o nome que deseja usar para o usuário. Ex: Marcos123"
+            reply = "📩 Envie o nome que deseja usar para o usuário. Ex: 'user username'"
 
-        elif body.startswith("nome usuário "):
+        elif body.startswith("user "):
             try:
                 # extrai o nome enviado pelo usuário
-                username = body.replace("nome usuário ", "").strip()
+                username = body.replace("user ", "").strip()
+                # pede agora para digitar a senha
+                reply = "📩 Envie a senha que deseja usar para o usuário. Ex 'psw password"
+
+                password = body.replace("psw ", "").strip()
                 if not username:
                     reply = "❌ Nome inválido. Por favor, envie novamente."
+                elif not password:
+                    reply = "❌ Senha inválida. Por favor, envie novamente."
                 else:
-                    password = User.objects.make_random_password()
+                    # cria o usuário
+                    
                     if not User.objects.filter(username=username).exists():
                         User.objects.create_user(username=username, password=password)
                         reply = f"✅ Usuário criado com sucesso!\nUsername: {username}\nSenha: {password}"
