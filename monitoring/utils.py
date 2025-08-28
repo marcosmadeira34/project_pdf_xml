@@ -19,6 +19,7 @@ def send_whatsapp_alert(message: str):
         "6️⃣ - Logs do beat\n"
         "7️⃣ - Logs do gunicorn\n"
         "8️⃣ - Logs do nginx\n"
+        "9️⃣ - Reiniciar worker\n"
     )
 
     client.messages.create(
