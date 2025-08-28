@@ -58,59 +58,28 @@ class WhatsAppWebhookView(View):
 
         
         # Dicionário para armazenar username pendente por número do WhatsApp
-        
+
         elif body.lower() in ["user", "6"]:
-            # pede para o usuário enviar o nome desejado
-            reply = "📩 Envie o nome que deseja usar para o usuário. Ex: 'user username'"
+            reply = "📩 Para criar um usuário, envie assim:\nuser <username> <email_ou_blank> <senha>\nEx: user Marcos123 meuemail@exemplo.com MinhaSenha123"
 
         elif body.lower().startswith("user "):
             try:
-                username = body[5:].strip()
-                if not username:
-                    reply = "❌ Nenhum username enviado. Primeiro: 'user <username>'"
+                parts = body.split(" ", 4)  # ["user", "username", "email", "senha"]
+                if len(parts) < 5:
+                    reply = "❌ Formato inválido. Use: user <username> <email_ou_blank> <senha>"
                 else:
-                    # armazena temporariamente o username
-                    pending_users[from_number] = {"username": username, "email": "", "password": ""}
-                    reply = "📩 Agora envie o email do usuário (ou deixe em branco). Ex: 'email seu_email@example.com'"
-            except Exception as e:
-                reply = f"❌ Erro ao processar username: {str(e)}"
-
-        elif body.lower().startswith("email "):
-            try:
-                email_user = body[6:].strip()
-                if from_number not in pending_users:
-                    reply = "❌ Nenhum username registrado. Primeiro envie: 'user <username>'"
-                else:
-                    pending_users[from_number]["email"] = email_user
-                    reply = "📩 Agora envie a senha do usuário. Ex: 'psw sua_senha'"
-            except Exception as e:
-                reply = f"❌ Erro ao processar email: {str(e)}"
-
-        elif body.lower().startswith("psw "):
-            try:
-                password = body[4:].strip()
-                if from_number not in pending_users:
-                    reply = "❌ Nenhum username registrado. Primeiro envie: 'user <username>'"
-                elif not password:
-                    reply = "❌ Senha inválida. Por favor, envie novamente."
-                else:
-                    pending_users[from_number]["password"] = password
-                    user_data = pending_users[from_number]
-                    username = user_data["username"]
-                    email_user = user_data["email"]
+                    username = parts[2].strip()
+                    email_user = parts[3].strip() or ""
+                    password = parts[4].strip()
 
                     if not User.objects.filter(username=username).exists():
-                        # cria o usuário ignorando validação de senha curta ou parecida com username
                         User.objects.create_superuser(username=username, email=email_user, password=password)
                         reply = f"✅ Usuário criado com sucesso!\nUsername: {username}\nSenha: {password}"
                     else:
                         reply = f"⚠️ Usuário já existe: {username}"
-
-                    # remove do pending_users após criação
-                    pending_users.pop(from_number, None)
             except Exception as e:
                 reply = f"❌ Erro ao criar usuário: {str(e)}"
-        
+                
 
 
 
