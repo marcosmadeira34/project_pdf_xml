@@ -23,6 +23,11 @@ class WhatsAppWebhookView(View):
 
         reply = "🤖 Comando não reconhecido. Use: STATUS ou RESTART\nOu responda com:\n1️⃣ Status\n2️⃣ Reiniciar\n3️⃣ Parar\n4️⃣ Reboot servidor"
 
+        if body.lower() == "menu":
+            send_whatsapp_alert("🤖 Menu disponível:")
+            reply = "✅ Menu enviado para o seu WhatsApp!"
+            
+        
         if body in ["status", "1"]:
             result = subprocess.getoutput("systemctl status celery-worker --no-pager -l")
             reply = f"📊 Status do worker:\n{result[:500]}..."  # evita estourar limite de msg
