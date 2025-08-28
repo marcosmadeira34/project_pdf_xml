@@ -16,7 +16,7 @@ def send_whatsapp_alert(message: str):
         "3️⃣ - Parar worker\n"
         "4️⃣ - Reiniciar servidor\n"
         "5️⃣ - Logs do worker\n"
-        "6️⃣ - Logs do beat\n"
+        "6️⃣ - Criar usuário\n"
         "7️⃣ - Logs do gunicorn\n"
         "8️⃣ - Logs do nginx\n"
         "9️⃣ - Reiniciar worker\n"
