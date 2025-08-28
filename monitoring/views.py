@@ -95,13 +95,18 @@ class WhatsAppWebhookView(View):
                         # Extrai o ID da ordem do output, assumindo que o padrão é: "Ordem de pagamento criada com ID <id> para o usuário ..."
                         import re
                         match = re.search(r"ID ([\w-]+) para o usuário", order_output)
+                        print(f"O match da ordem de pagamento é {match}")
                         if match:
                             order_id = match.group(1)
+                            print(f"O ID da ordem de pagamento é {order_id}")
                             # Confirma o pagamento
                             confirm_output = subprocess.getoutput(f"python manage.py confirm_payment {order_id}")
+                            print(f"O output da confirmação de pagamento é {confirm_output}")
                             # Extrai o saldo do output
                             match_saldo = re.search(r"Novo saldo: (\d+)", confirm_output)
+                            print(f"O match do saldo é {match_saldo}")
                             saldo = match_saldo.group(1) if match_saldo else "desconhecido"
+                            print(f"O saldo é {saldo}")
                             reply += f"\n✅ Pagamento confirmado! Novo saldo: {saldo} créditos."
                         else:
                             reply += "\n❌ Erro ao criar ordem de pagamento."
