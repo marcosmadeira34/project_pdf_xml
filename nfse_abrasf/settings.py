@@ -18,6 +18,7 @@ import ssl
 import json
 import unicodedata
 import re
+from decouple import config
 
 load_dotenv()
 
@@ -283,3 +284,8 @@ EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True") == "True"
 
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
 SUPPORT_EMAIL = os.getenv("SUPPORT_EMAIL")
+
+AWS_ACCESS_KEY_ID = config("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = config("AWS_SECRET_ACCESS_KEY")
+AWS_STORAGE_BUCKET_NAME = config("AWS_STORAGE_BUCKET_NAME")
+AWS_S3_REGION_NAME = config("AWS_S3_REGION_NAME", "sa-east-1")  # região padrão

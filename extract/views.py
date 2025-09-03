@@ -25,7 +25,7 @@ from .models import (ArquivoZip, UserCredits, SupportTicket,
 # Certifique-se de que esses imports estão corretos para o seu projeto
 from extract.services import DocumentAIProcessor
 from extract.tasks import processar_pdfs, merge_pdfs_task  # Removido processar_pdf_com_ai
-from extract.minio_service import upload_file_to_minio  # Certifique-se de que este caminho está correto
+from extract.minio_service import upload_file_to_s3  # Certifique-se de que este caminho está correto
 
 from django.conf import settings
 from django.core.mail import send_mail
@@ -168,7 +168,7 @@ class UploadEProcessarPDFView(View):
                 file_keys = []
                 for file in files:
                     file_key = f"user_{request.user.id}/{uuid.uuid4()}/{file.name}"
-                    upload_file_to_minio(file, file_key)
+                    upload_file_to_s3(file, file_key)
                     file_keys.append(file_key)  # Salva só o caminho
 
                 # Chama a tarefa com o dicionário de arquivos
