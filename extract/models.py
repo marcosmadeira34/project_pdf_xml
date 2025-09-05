@@ -218,6 +218,7 @@ class SupportTicket(models.Model):
 
     
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='support_tickets')
+    email = models.EmailField(max_length=254, blank=True, null=True, help_text="Email para resposta do ticket")  # Novo campo de email
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='aberto', help_text="Status do ticket")
     created_at = models.DateTimeField(auto_now_add=True, help_text="Data de criação do ticket")
     updated_at = models.DateTimeField(auto_now=True, help_text="Data da última atualização do ticket")

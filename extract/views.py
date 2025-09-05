@@ -405,11 +405,14 @@ class SupportTicketView(View):
             # Multipart form, pegar dos campos POST
             subject = request.POST.get("subject")
             description = request.POST.get("description")
+            email_response = request.POST.get("email")
+            print(f"Email para resposta do ticket: {email_response}")
             priority = request.POST.get("priority")
             if not subject or not description or not priority:
                 return JsonResponse({"error": "Campos obrigatórios ausentes"}, status=400)
             ticket = SupportTicket.objects.create(
                 user=request.user,
+                email=email_response,
                 subject=subject,
                 description=description,
                 priority=priority,
@@ -427,7 +430,7 @@ class SupportTicketView(View):
             # Montar corpo do email
             user_email = request.user.email if request.user.email else request.user.username
             email_subject = f"[SUPORTE] Nova solicitação - Prioridade: {priority.upper()}"
-            email_body = f"Usuário: {user_email}\n\nAssunto: {subject}\n\nDescrição:\n{description}"
+            email_body = f"Usuário: {user_email}\n\n Email Resposta: {email_response}\n\nAssunto: {subject}\n\nDescrição:\n{description}"
             recipient_list = [settings.SUPPORT_EMAIL]
 
             print(f"O usuário que fez a requisição de suporte foi {user_email}")
@@ -436,7 +439,7 @@ class SupportTicketView(View):
             email = EmailMultiAlternatives(
                 subject=email_subject,
                 body=email_body,
-                from_email=settings.DEFAULT_FROM_EMAIL,
+                from_email=email_response,
                 to=recipient_list,
             )
             

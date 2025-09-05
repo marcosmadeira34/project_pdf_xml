@@ -1,0 +1,89 @@
+<CompNfse xmlns="http://www.abrasf.org.br/nfse.xsd">
+<Nfse versao="1.00">
+<InfNfse Id="">
+<Numero>87041</Numero>
+<CodigoVerificacao>C40TMBKCV</CodigoVerificacao>
+<DataEmissao>2025-08-01T14:57:00</DataEmissao>
+<ValoresNfse>
+<BaseCalculo>1862.64</BaseCalculo>
+<Aliquota>3.0</Aliquota>
+<ValorIss>55.88</ValorIss>
+<ValorLiquidoNfse>374.390.23</ValorLiquidoNfse>
+</ValoresNfse>
+<PrestadorServico>
+<IdentificacaoPrestador>
+<CpfCnpj>
+<Cnpj>41356863000183</Cnpj>
+</CpfCnpj>
+<InscricaoMunicipal/>
+</IdentificacaoPrestador>
+<RazaoSocial>BLUE PAY SOLUTIONS LTDA</RazaoSocial>
+<NomeFantasia/>
+<Endereco>
+<Endereco>AVENIDA CONSELHEIRO NEBIAS, N° 444, ENCRUZILHADA, SANTOS-SP, 11045-000</Endereco>
+<Numero>444</Numero>
+<Bairro>ENCRUZILHADA</Bairro>
+<CodigoMunicipio>3548500</CodigoMunicipio>
+<CodigoPais>1058</CodigoPais>
+<Cep>11045000</Cep>
+</Endereco>
+<Contato>
+<Telefone>(31) 3197-5030</Telefone>
+<Email/>
+</Contato>
+</PrestadorServico>
+<OrgaoGerador>
+<CodigoMunicipio>3548500</CodigoMunicipio>
+<Uf>SP</Uf>
+</OrgaoGerador>
+<DeclaracaoPrestacaoServico>
+<InfDeclaracaoPrestacaoServico>
+<Competencia>2025-08-01</Competencia>
+<Servico>
+<Valores>
+<IssRetido>2</IssRetido>
+<Aliquota>3.0</Aliquota>
+<ValorServicos>1862.64</ValorServicos>
+<ValorDeducoes>0.00</ValorDeducoes>
+<ValorPis>0.00</ValorPis>
+<ValorCofins>0.00</ValorCofins>
+<ValorInss>0.00</ValorInss>
+<ValorIr>0.00</ValorIr>
+<ValorCsll>0.00</ValorCsll>
+<ValorIss>55.88</ValorIss>
+<OutrasRetencoes>0.00</OutrasRetencoes>
+<DescontoIncondicional>0.00</DescontoIncondicional>
+<DescontoCondicionado>0.00</DescontoCondicionado>
+</Valores>
+<ItemListaServico>7319003</ItemListaServico>
+<Discriminacao>Gerenciamento de pagamento conforme campanha de incentivo 2025.</Discriminacao>
+<CodigoMunicipio>3548500</CodigoMunicipio>
+<CodigoPais>1058</CodigoPais>
+<ExigibilidadeISS>1</ExigibilidadeISS>
+<MunicipioIncidencia>3548500</MunicipioIncidencia>
+</Servico>
+<Tomador>
+<IdentificacaoTomador>
+<CpfCnpj>
+<Cnpj>13029909000114</Cnpj>
+</CpfCnpj>
+</IdentificacaoTomador>
+<RazaoSocial>IT'S Soluções LTDA</RazaoSocial>
+<Endereco>
+<Endereco>R ARGEMIRO AGUILAR, N° 498, CENTRO, ALMENARA-MG, 39900-000</Endereco>
+<Numero>498</Numero>
+<Bairro>CENTRO</Bairro>
+<CodigoMunicipio>3101706</CodigoMunicipio>
+<CodigoPais>1058</CodigoPais>
+<Cep>39900000</Cep>
+</Endereco>
+<Contato>
+<Telefone>(31) 3197-5030</Telefone>
+<Email>MARCILIO@CREDFRANCO.COM.BR</Email>
+</Contato>
+</Tomador>
+</InfDeclaracaoPrestacaoServico>
+</DeclaracaoPrestacaoServico>
+</InfNfse>
+</Nfse>
+</CompNfse>
