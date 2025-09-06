@@ -16,7 +16,7 @@ def get_s3_client():
 
 def upload_file_to_s3(file_obj, object_name):
     """
-    Faz upload de um arquivo para o MinIO.
+    Faz upload de um arquivo para o S3 AWS.
 
     :param file_path: Caminho do arquivo local a ser enviado.
     :param object_name: Nome do objeto no MinIO.
@@ -60,9 +60,9 @@ def generate_presigned_upload_url(filename, expires_in=3600):
 
 def download_file_from_minio(object_key):
     """
-    Faz download de um arquivo do MinIO.
+    Faz download de um arquivo do S3.
 
-    :param object_name: Nome do objeto no MinIO.
+    :param object_name: Nome do objeto no S3.
     :param file_path: Caminho local onde o arquivo será salvo.
     """
     s3_client = get_s3_client()

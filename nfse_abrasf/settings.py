@@ -263,7 +263,13 @@ CHANNEL_LAYERS = {
     },
 }
 
-DATA_UPLOAD_MAX_NUMBER_FILES = 200
+FILE_UPLOAD_HANDLERS = [
+    "django.core.files.uploadhandler.TemporaryFileUploadHandler",
+]
+
+DATA_UPLOAD_MAX_NUMBER_FILES = 50
+DATA_UPLOAD_MAX_MEMORY_SIZE = 1073741824  # 1GB (reduzido de 2GB)
+FILE_UPLOAD_MAX_MEMORY_SIZE = 52428800    # 50MB por arquivo (reduzido de 100MB)
 
 
 BUCKETEER_AWS_ACCESS_KEY_ID = os.getenv("BUCKETEER_AWS_ACCESS_KEY_ID")

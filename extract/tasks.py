@@ -152,29 +152,41 @@ def processar_pdfs(self, file_keys):
 
 
 @shared_task(bind=True)
-def merge_pdfs_task(self, pdf_contents_base64: dict, output_filename: str):
+def merge_pdfs_task(self, temp_file_paths, output_filename):
     """
     Junta múltiplos PDFs cujos conteúdos são passados em base64.
     Retorna o PDF combinado em base64.
     """
     try:
-        # Certifique-se de que PyPDF2 está importado se esta função for usada.
-        # import PyPDF2
         pdf_merger = PyPDF2.PdfMerger()
-
-        for file_name, base64_content in pdf_contents_base64.items():
-            pdf_bytes = base64.b64decode(base64_content)
-            pdf_file = io.BytesIO(pdf_bytes)
-            pdf_merger.append(pdf_file)
-
+        
+        # Lê arquivos um por um do disco
+        for temp_path in temp_file_paths:
+            with open(temp_path, 'rb') as pdf_file:
+                pdf_merger.append(pdf_file)
+        
         output_buffer = io.BytesIO()
         pdf_merger.write(output_buffer)
         output_buffer.seek(0)
         merged_pdf_bytes_base64 = base64.b64encode(output_buffer.read()).decode('utf-8')
-
+        
+        # Limpa arquivos temporários
+        for temp_path in temp_file_paths:
+            try:
+                os.remove(temp_path)
+            except:
+                pass
+        
         return {"merged_pdf_bytes": merged_pdf_bytes_base64, "filename": output_filename}
+    
     except Exception as e:
         logger.error(f"Erro ao juntar PDFs: {e}", exc_info=True)
+        # Tenta limpar mesmo em caso de erro
+        for temp_path in temp_file_paths:
+            try:
+                os.remove(temp_path)
+            except:
+                pass
         raise
 
 

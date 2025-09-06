@@ -25,7 +25,7 @@ from .models import (ArquivoZip, UserCredits, SupportTicket,
 # Certifique-se de que esses imports estão corretos para o seu projeto
 from extract.services import DocumentAIProcessor
 from extract.tasks import processar_pdfs, merge_pdfs_task  # Removido processar_pdf_com_ai
-from extract.minio_service import upload_file_to_s3  # Certifique-se de que este caminho está correto
+from extract.minio_service import upload_file_to_s3, get_s3_client    # Certifique-se de que este caminho está correto
 
 from django.conf import settings
 from django.core.mail import send_mail
@@ -34,7 +34,7 @@ from django.contrib.auth.models import User
 from extract.jwt_auth import JWTAuthenticationService
 from .minio_service import generate_presigned_upload_url
 from django.core.mail import EmailMultiAlternatives
-
+from django.core.files.uploadhandler import TemporaryFileUploadHandler
 
 logger = logging.getLogger(__name__)
 
@@ -85,37 +85,27 @@ class StreamlitAppRedirectView(View):
 class UploadEProcessarPDFView(View):
     def post(self, request):
         try:
-            # Debug log para verificar o usuário
-            import logging
             logger = logging.getLogger(__name__)
             logger.info(f"UploadEProcessarPDFView - request.user: {request.user}")
-            logger.info(f"UploadEProcessarPDFView - request.user.id: {getattr(request.user, 'id', 'No ID')}")
-            logger.info(f"UploadEProcessarPDFView - is_authenticated: {request.user.is_authenticated}")
             
-            # Verifica se o usuário está autenticado
+            # Verifica autenticação
             if not request.user.is_authenticated:
                 return JsonResponse({
                     'error': 'Usuário não autenticado',
                     'message': 'Faça login para continuar'
                 }, status=401)
             
-            # Verifica se o usuário tem créditos suficientes ANTES de processar
-            user_credits, created = UserCredits.objects.get_or_create(user=request.user)
-            
-            # Conta quantos arquivos serão processados
+            # Obtém os arquivos
             files = request.FILES.getlist('files[]')
-            required_credits = len(files)
-            logger.info(f"Arquivos recebidos: {[f.name for f in request.FILES.getlist('files')]}")
-            
-            logger.info(f"Files received: {len(files)}")
-            logger.info(f"Required credits: {required_credits}")
-            logger.info(f"User credits: {user_credits.balance}")
-
             if not files:
                 return JsonResponse({
                     'error': 'Nenhum arquivo enviado',
                     'message': 'Por favor, envie pelo menos um arquivo PDF'
                 }, status=400)
+            
+            # Verifica créditos
+            user_credits, created = UserCredits.objects.get_or_create(user=request.user)
+            required_credits = len(files)
             
             if not user_credits.has_credits(required_credits):
                 return JsonResponse({
@@ -123,97 +113,118 @@ class UploadEProcessarPDFView(View):
                     'message': f'Você precisa de {required_credits} crédito(s) para processar {len(files)} arquivo(s)',
                     'current_balance': user_credits.balance,
                     'required_credits': required_credits
-                }, status=402)  # 402 Payment Required
-            
-            # CONSOME OS CRÉDITOS ANTES DE PROCESSAR
-            success = user_credits.use_credits(
-                required_credits, 
-                f"Conversão de {required_credits} PDF(s)"
-            )
-            
-            if not success:
-                return JsonResponse({
-                    'error': 'Erro ao consumir créditos',
-                    'message': 'Houve um erro ao descontar os créditos'
-                }, status=500)
-            
-            logger.info(f"Credits consumed successfully. New balance: {user_credits.balance}")
-            
-            # Agora processa os arquivos
-            merge_id = uuid.uuid4()
+                }, status=402)
             
             # Verifica se deve fazer merge
             merge_pdfs_param = request.POST.get('merge_pdfs', 'false').lower() == 'true'
+            merge_id = uuid.uuid4()
             
-            if merge_pdfs_param and len(files) > 1:
-                # Para merge, prepara os dados no formato esperado
-                files_dict = {}
-                for file in files:
-                    files_dict[file.name] = file.read()
+            # Tenta processar os arquivos primeiro
+            try:
+                if merge_pdfs_param and len(files) > 1:
+                    # Processamento para merge - salvar arquivos temporariamente
+                    temp_files = []
+                    for file in files:
+                        # Salva arquivo temporariamente em disco
+                        temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp_merge')
+                        os.makedirs(temp_dir, exist_ok=True)
+                        temp_path = os.path.join(temp_dir, f"{uuid.uuid4()}_{file.name}")
+                        
+                        with open(temp_path, 'wb+') as destination:
+                            for chunk in file.chunks():
+                                destination.write(chunk)
+                        temp_files.append(temp_path)
+                    
+                    # Inicia a task
+                    merge_task = merge_pdfs_task.delay(temp_files, str(merge_id))
+                    task_id = merge_task.id
+                else:
+                    # Processamento normal - upload direto para o S3
+                    file_keys = []
+                    for file in files:
+                        file_key = f"user_{request.user.id}/{uuid.uuid4()}/{file.name}"
+                        upload_file_to_s3(file, file_key)
+                        file_keys.append(file_key)
+                    
+                    # Inicia a task
+                    task = processar_pdfs.delay(file_keys)
+                    TaskStatusModel.objects.create(
+                        user=request.user,
+                        task_id=task.id,
+                        status='AGUARDANDO'
+                    )
+                    task_id = task.id
                 
-                merge_task = merge_pdfs_task.delay(files_dict, str(merge_id))
-                
-                return JsonResponse({
-                    'success': True,
-                    'task_id': merge_task.id,
-                    'merge_id': str(merge_id),
-                    'message': f'Créditos consumidos: {required_credits}. Processamento iniciado!',
-                    'files_count': len(files),
-                    'credits_used': required_credits,
-                    'remaining_credits': user_credits.balance
-                })
-            else:
-                # Para processar individualmente, vamos criar uma única tarefa com todos os arquivos
-                # A função processar_pdfs espera um dicionário {nome_arquivo: bytes}
-                file_keys = []
-                for file in files:
-                    file_key = f"user_{request.user.id}/{uuid.uuid4()}/{file.name}"
-                    upload_file_to_s3(file, file_key)
-                    file_keys.append(file_key)  # Salva só o caminho
-
-                # Chama a tarefa com o dicionário de arquivos
-                task = processar_pdfs.delay(file_keys)
-
-                # ✅ Cria o status antes da execução iniciar
-                TaskStatusModel.objects.create(
-                    user=request.user,
-                    task_id=task.id,
-                    status='AGUARDANDO'
+                # Se chegou aqui, os arquivos foram salvos com sucesso
+                # Agora consome os créditos
+                success = user_credits.use_credits(
+                    required_credits, 
+                    f"Conversão de {required_credits} PDF(s)"
                 )
-
                 
+                if not success:
+                    # Se falhou ao consumir créditos, limpa os arquivos
+                    if merge_pdfs_param and len(files) > 1:
+                        for temp_path in temp_files:
+                            try:
+                                os.remove(temp_path)
+                            except:
+                                pass
+                    else:
+                        for file_key in file_keys:
+                            try:
+                                s3_client = get_s3_client()
+                                s3_client.delete_object(
+                                    Bucket=settings.AWS_STORAGE_BUCKET_NAME,
+                                    Key=file_key
+                                )
+                            except:
+                                pass
+                    
+                    return JsonResponse({
+                        'error': 'Erro ao consumir créditos',
+                        'message': 'Houve um erro ao descontar os créditos'
+                    }, status=500)
+                
+                # Se tudo deu certo, retorna a resposta
                 return JsonResponse({
                     'success': True,
-                    'task_id': task.id,  # Retorna um único task_id
+                    'task_id': task_id,
                     'merge_id': str(merge_id),
                     'message': f'Créditos consumidos: {required_credits}. Processamento iniciado!',
                     'files_count': len(files),
                     'credits_used': required_credits,
                     'remaining_credits': user_credits.balance
                 })
+                
+            except Exception as e:
+                # Se houve erro, não consumimos créditos, mas precisamos limpar os arquivos
+                if merge_pdfs_param and len(files) > 1:
+                    if 'temp_files' in locals():
+                        for temp_path in temp_files:
+                            try:
+                                os.remove(temp_path)
+                            except:
+                                pass
+                else:
+                    if 'file_keys' in locals():
+                        for file_key in file_keys:
+                            try:
+                                s3_client = get_s3_client()
+                                s3_client.delete_object(
+                                    Bucket=settings.AWS_STORAGE_BUCKET_NAME,
+                                    Key=file_key
+                                )
+                            except:
+                                pass
+                raise
                 
         except Exception as e:
-            # Log detalhado do erro
-            import logging
-            logger = logging.getLogger(__name__)
             logger.error(f'Erro em UploadEProcessarPDFView: {str(e)}', exc_info=True)
             
-            # Se houver erro APÓS consumir créditos, reembolsa
-            try:
-                if 'required_credits' in locals() and 'success' in locals() and success:
-                    # Reembolsa os créditos
-                    user_credits.add_credits(
-                        required_credits,
-                        f"Reembolso - Erro no processamento: {str(e)}"
-                    )
-                    logger.info(f"Credits refunded: {required_credits}")
-            except Exception as refund_error:
-                logger.error(f"Error during refund: {str(refund_error)}")
-                pass  # Evita erro duplo
-            
             return JsonResponse({
-                'error': f'Erro no processamento em uploadprocessarpdfview: {str(e)}',
-                'message': 'Créditos reembolsados devido ao erro'
+                'error': f'Erro no processamento: {str(e)}',
+                'message': 'Nenhum crédito foi consumido devido ao erro'
             }, status=500)
 
 # --- View para Verificar o Status da Tarefa Celery (API) ---
