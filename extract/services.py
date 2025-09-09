@@ -151,9 +151,11 @@ class DocumentAIProcessor:
     
     # método para processar o PDF carregado pelo usuário
     def processar_pdf(self, project_id: str, location: str, processor_id: str, file_content: bytes) -> Dict:
+        
         """Processa o PDF diretamente dos dados binários"""
-        if not file_content:
-            raise ValueError("Conteúdo do arquivo não pode ser vazio")
+        if not file_content:            
+            logger.warning(f"O conteúdo não pode ser vazio")
+            return {}
         
         document = {"content": file_content, "mime_type": "application/pdf"}
         name = f"projects/{project_id}/locations/{location}/processors/{processor_id}"
