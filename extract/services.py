@@ -18,7 +18,8 @@ import unicodedata
 from difflib import get_close_matches
 from decimal import Decimal, InvalidOperation
 from cidades_ibge import buscar_codigo_municipio
-
+import io
+import xml.etree.ElementTree as ET
 
 
 # Configuração do logger
@@ -28,6 +29,58 @@ logger = logging.getLogger(__name__)
 
 # carrega as variáveis de ambiente
 load_dotenv()
+
+# classe para enviar email
+class EmailSender:
+    """Classe para enviar emails com relatórios anexados"""
+
+    @staticmethod
+    def send_email(destinatario: str, assunto: str, corpo: str, anexos: List[Tuple[str, bytes]]):
+        """Envia um email com os anexos especificados"""
+        # Implementação do envio de email
+        import smtplib
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+        from email.mime.base import MIMEBase
+        from email import encoders
+        from email.utils import formataddr
+        from email.utils import COMMASPACE
+        from email.header import Header
+        from email.utils import parseaddr
+        from email.utils import formatdate
+        from email.mime.application import MIMEApplication
+        from email.mime.image import MIMEImage
+        from django.conf import settings
+
+        smtp_server = settings.EMAIL_HOST
+        smtp_port = settings.EMAIL_PORT
+        smtp_user = settings.EMAIL_HOST_USER
+        smtp_password = settings.EMAIL_HOST_PASSWORD
+        from_email = settings.DEFAULT_FROM_EMAIL
+        support_email = settings.SUPPORT_EMAIL
+
+        msg = MIMEMultipart()
+        msg['From'] = formataddr((str(Header('NFS-e Abrasf', 'utf-8')), from_email))
+
+        msg['To'] = destinatario
+        msg['Date'] = formatdate(localtime=True)
+        msg['Subject'] = Header(assunto, 'utf-8')
+        msg.attach(MIMEText(corpo, 'plain', 'utf-8'))
+        # Adiciona os anexos
+        for nome_arquivo, conteudo in anexos:
+            part = MIMEApplication(conteudo, Name=nome_arquivo)
+            part['Content-Disposition'] = f'attachment; filename="{nome_arquivo}"'
+            msg.attach(part)
+
+        try:
+            with smtplib.SMTP(smtp_server, smtp_port) as server:
+                server.starttls()
+                server.login(smtp_user, smtp_password)
+                server.sendmail(from_email, [destinatario, support_email], msg.as_string())
+            logger.info(f"Email enviado para {destinatario} com sucesso.")
+        except Exception as e:
+            logger.error(f"Erro ao enviar email para {destinatario}: {e}")
+
 
 # define a classe de credenciais (conceito SOLID)
 class CredentialsLoader:
@@ -228,19 +281,87 @@ class ExcelGenerator:
     """Gera um arquivo Excel com os dados extraídos."""
     
     @staticmethod
-    def gerar_excel(dados: List[Dict], nome_arquivo: str = "dados_nfse.xlsx") -> str:
-        """Gera um arquivo Excel a partir de uma lista de dicionários."""
-        if not dados:
+    def gerar_excel(arquivos_resultado: dict, nome_arquivo: str = "dados_nfse.xlsx") -> bytes:
+        """
+        Gera um arquivo Excel consolidado a partir do dicionário {nome_arquivo: xml}.
+        Extrai os campos do XML considerando namespace ABRASF.
+        """
+        if not arquivos_resultado:
             raise ValueError("Nenhum dado fornecido para gerar o Excel")
 
-        # Criação do DataFrame
-        df = pd.DataFrame(dados)
+        ns = {"n": "http://www.abrasf.org.br/nfse.xsd"}  # namespace do XML
+        linhas = []
 
-        # Salvando o DataFrame em um arquivo Excel
-        df.to_excel(nome_arquivo, index=False)
+        for nome_arquivo, xml_str in arquivos_resultado.items():
+            try:
+                root = ET.fromstring(xml_str)
 
-        print(f"Arquivo Excel gerado: {nome_arquivo}")
-        return nome_arquivo
+                # busca com namespace
+                numero = root.find(".//n:Numero", ns)
+                base_calculo = root.find(".//n:ValoresNfse/n:BaseCalculo", ns)
+                valor_iss = root.find(".//n:ValoresNfse/n:ValorIss", ns)
+                valor_total = root.find(".//n:Servico/n:Valores/n:ValorServicos", ns)
+                prestador_razao = root.find(".//n:PrestadorServico/n:RazaoSocial", ns)
+                prestador_cnpj = root.find(".//n:PrestadorServico/n:IdentificacaoPrestador/n:CpfCnpj/n:Cnpj", ns)
+                tomador_razao = root.find(".//n:Tomador/n:RazaoSocial", ns)
+                tomador_cnpj = root.find(".//n:Tomador/n:IdentificacaoTomador/n:CpfCnpj/n:Cnpj", ns)
+                data_emissao = root.find(".//n:DataEmissao", ns)
+                valor_ir = root.find(".//n:Servico/n:Valores/n:ValorIr", ns)
+                valor_inss = root.find(".//n:Servico/n:Valores/n:ValorInss", ns)
+                valor_liquido = root.find(".//n:ValoresNfse/n:ValorLiquidoNfse", ns)
+                valor_deducoes = root.find(".//n:Servico/n:Valores/n:ValorDeducoes", ns)
+                valor_pis = root.find(".//n:Servico/n:Valores/n:ValorPis", ns)
+                valor_cofins = root.find(".//n:Servico/n:Valores/n:ValorCofins", ns)
+                item_lista_servico = root.find(".//n:Servico/n:ItemListaServico", ns)
+                codigo_municipio_prestador = root.find(".//n:PrestadorServico/n:Endereco/n:CodigoMunicipio", ns)
+                codigo_municipio_tomador = root.find(".//n:Tomador/n:Endereco/n:CodigoMunicipio", ns)
+                outras_retencoes = root.find(".//n:Servico/n:Valores/n:OutrasRetencoes", ns)
+                descontos_condicionados = root.find(".//n:Servico/n:Valores/n:DescontoCondicionado", ns)
+                descontos_incondicionados = root.find(".//n:Servico/n:Valores/n:DescontoIncondicional", ns)
+
+                linhas.append({
+                    "Arquivo": nome_arquivo,
+                    "Numero Nota": numero.text if numero is not None else "",
+                    "Base de Cálculo": base_calculo.text if base_calculo is not None else "",
+                    "Valor ISS": valor_iss.text if valor_iss is not None else "",
+                    "Valor Total da Nota": valor_total.text if valor_total is not None else "",
+                    "Prestador Razão Social": prestador_razao.text if prestador_razao is not None else "",
+                    "Prestador CNPJ": prestador_cnpj.text if prestador_cnpj is not None else "",
+                    "Tomador Razão Social": tomador_razao.text if tomador_razao is not None else "",
+                    "Tomador CNPJ": tomador_cnpj.text if tomador_cnpj is not None else "",
+                    "Data Emissão": data_emissao.text if data_emissao is not None else "",
+                    "Valor IR": valor_ir.text if valor_ir is not None else "",
+                    "Valor INSS": valor_inss.text if valor_inss is not None else "",
+                    "Valor Líquido": valor_liquido.text if valor_liquido is not None else "",
+                    "Valor Deduções": valor_deducoes.text if valor_deducoes is not None else "",
+                    "Valor PIS": valor_pis.text if valor_pis is not None else "",
+                    "Valor COFINS": valor_cofins.text if valor_cofins is not None else "",
+                    "Item Lista Serviço": item_lista_servico.text if item_lista_servico is not None else "",
+                    "Código Município Prestador": codigo_municipio_prestador.text if codigo_municipio_prestador is not None else "",
+                    "Código Município Tomador": codigo_municipio_tomador.text if codigo_municipio_tomador is not None else "",
+                    "Outras Retenções": outras_retencoes.text if outras_retencoes is not None else "",
+                    "Descontos Condicionados": descontos_condicionados.text if descontos_condicionados is not None else "",
+                    "Descontos Incondicionados": descontos_incondicionados.text if descontos_incondicionados is not None else "",
+                })
+
+                print(f"✅ Dados extraídos do arquivo {nome_arquivo}: {linhas[-1]}")
+
+            except Exception as e:
+                linhas.append({
+                    "Arquivo": nome_arquivo,
+                    "Numero Nota": "ERRO",
+                })
+                print(f"❌ Erro ao processar XML do arquivo {nome_arquivo}: {e}")
+
+        # Cria DataFrame com todas as colunas preenchidas
+        df = pd.DataFrame(linhas)
+
+        # Salva em Excel na memória
+        excel_buffer = io.BytesIO()
+        df.to_excel(excel_buffer, index=False)
+        excel_buffer.seek(0)
+        return excel_buffer.getvalue()
+        
 
 
 class ValidatorXSD:
@@ -906,7 +1027,7 @@ class XMLGenerator:
         else:
 
             try:
-                valor_liquido_dec = Decimal(valor_liquido_str)
+                valor_liquido_dec = Decimal(valor_liquido_str or "0.00")
                 if valor_liquido_dec >= 0:
                     valor_liquido_nfse = "{:.2f}".format(valor_liquido_dec)
                     logger.info(f"Valor líquido da NFS-e: {valor_liquido_nfse}")
