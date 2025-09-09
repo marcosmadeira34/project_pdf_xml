@@ -665,14 +665,20 @@ class XMLGenerator:
         # Remove o caractere '%' e substitui a vírgula por ponto
         aliquota_formatada = aliquota.replace('%', '').replace(',', '.')
 
-        # Tenta converter para float, lançando erro se for inválido
-        if aliquota_formatada:
+        try:
             aliquota_float = float(aliquota_formatada)
-            print(f"Alíquota formatada linha 394: {aliquota_float}")
-        else:
+            print(f"[DEBUG] Alíquota convertida para float: {aliquota_float}")
+        except (ValueError, TypeError):
             aliquota_float = 0.0
+            logger.warning(
+                f"[AVISO] Alíquota inválida ou ausente: '{aliquota}' "
+                f"na nota {dados.get('numero-nota-fiscal', '')} | "
+                f"Prestador: {dados.get('razaoSocialPrestador', '')}"
+            )
 
+        logger.info(f"[DEBUG] Alíquota final linha 676: {aliquota_float}")
         etree.SubElement(valores_nfse, "Aliquota").text = str(aliquota_float)
+
 
         valor_iss = cls.validar_dados_criticos(dados, "valorIss")
         valor_iss = valor_iss if valor_iss else Decimal("0.00")
@@ -821,10 +827,18 @@ class XMLGenerator:
         aliquota_servico = str(dados.get("aliquota", "")).strip()
         aliquota_servico_formatada = aliquota_servico.replace('%', '').replace(',', '.')  # Remove espaços e converte vírgulas
         
-        if aliquota_servico_formatada:
+        try:
             aliquota_servico_float = float(aliquota_servico_formatada)
-        else:
+            print(f"[DEBUG] Alíquota do serviço convertida para float: {aliquota_servico_float}")
+        except (ValueError, TypeError):
             aliquota_servico_float = "0.00"
+            logger.warning(
+                f"[AVISO] Alíquota do serviço inválida ou ausente linha 836: '{aliquota_servico}' "
+                f"na nota {dados.get('numero-nota-fiscal', '')} | "
+                f"Prestador: {dados.get('razaoSocialPrestador', '')}"
+            )
+
+        logger.info(f"[DEBUG] Alíquota do serviço final linha 847: {aliquota_servico_float}")
             #raise ValueError(f"Valor inválido para alíquota: {aliquota_servico}")
         etree.SubElement(valores_servico, "Aliquota").text = str(aliquota_servico_float)          
 
