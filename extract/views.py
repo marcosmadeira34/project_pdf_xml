@@ -147,7 +147,7 @@ class UploadEProcessarPDFView(View):
                         file_keys.append(file_key)
                     
                     # Inicia a task
-                    task = processar_pdfs.delay(file_keys)
+                    task = processar_pdfs.delay(file_keys, enable_duplicates=False)
                     TaskStatusModel.objects.create(
                         user=request.user,
                         task_id=task.id,

@@ -5,13 +5,14 @@ import base64
 from celery import shared_task
 from .services import DocumentAIProcessor
 from .services import XMLGenerator, ExcelGenerator, EmailSender
-from .models import ArquivoZip, TaskStatusModel
+from .models import ArquivoZip, TaskStatusModel, FilesProccess
 import logging
 import PyPDF2
 from extract.minio_service import download_file_from_minio
 import json
 from django.conf import settings
 from datetime import datetime
+import hashlib
 
 
 
@@ -132,7 +133,7 @@ def gerar_excel(self, files_data):
 
 
 @shared_task(bind=True)
-def processar_pdfs(self, file_keys):
+def processar_pdfs(self, file_keys, enable_duplicates=False):
     """
     Processa múltiplos PDFs já enviados via presigned URL para o MinIO.
     :param file_keys: lista de chaves (keys) no bucket, ex: ["uploads/20240823_arquivo1.pdf"]
@@ -189,6 +190,12 @@ def processar_pdfs(self, file_keys):
                     # Adiciona ao ZIP
                     zip_file.writestr(xml_filename, xml_str.encode('utf-8'))
 
+                    # Gera uma hash SHA256 para identificar arquivos únicos
+                    # file_hash = hashlib.sha256(pdf_bytes).hexdigest()
+                    # hash_register = FilesProccess.objects.create(
+                    #     hash=file_hash,
+                    #     filename=xml_filename                        
+                    # )
                     
 
                 # Gera relatório Excel

@@ -18,18 +18,46 @@ with open("municipios.json", encoding="utf-8") as f:
     municipios_raw = json.load(f)
 # Mapeamento UF por código IBGE
 UF_POR_CODIGO = {
-    11: "RO", 12: "AC", 13: "AM", 14: "RR", 15: "PA", 16: "AP", 17: "TO",
-    21: "MA", 22: "PI", 23: "CE", 24: "RN", 25: "PB", 26: "PE", 27: "AL", 28: "SE", 29: "BA",
-    31: "MG", 32: "ES", 33: "RJ", 35: "SP", 41: "PR", 42: "SC", 43: "RS",
-    50: "MS", 51: "MT", 52: "GO", 53: "DF"
+    11: ["RO", "RONDONIA"],
+    12: ["AC", "ACRE"],
+    13: ["AM", "AMAZONAS"],
+    14: ["RR", "RORAIMA"],
+    15: ["PA", "PARA"],
+    16: ["AP", "AMAPA"],
+    17: ["TO", "TOCANTINS"],
+    21: ["MA", "MARANHAO"],
+    22: ["PI", "PIAUI"],
+    23: ["CE", "CEARA"],
+    24: ["RN", "RIO GRANDE DO NORTE"],
+    25: ["PB", "PARAIBA"],
+    26: ["PE", "PERNAMBUCO"],
+    27: ["AL", "ALAGOAS"],
+    28: ["SE", "SERGIPE"],
+    29: ["BA", "BAHIA"],
+    31: ["MG", "MINAS GERAIS"],
+    32: ["ES", "ESPIRITO SANTO"],
+    33: ["RJ", "RIO DE JANEIRO"],
+    35: ["SP", "SAO PAULO"],
+    41: ["PR", "PARANA"],
+    42: ["SC", "SANTA CATARINA"],
+    43: ["RS", "RIO GRANDE DO SUL"],
+    50: ["MS", "MATO GROSSO DO SUL"],
+    51: ["MT", "MATO GROSSO"],
+    52: ["GO", "GOIAS"],
+    53: ["DF", "DISTRITO FEDERAL"]
 }
+
 
 # Monta o dicionário com as chaves normalizadas
-CIDADES_IBGE = {
-    f"{unicodedata.normalize('NFD', m['nome']).encode('ascii', 'ignore').decode().upper().strip()}-{UF_POR_CODIGO[m['codigo_uf']]}": str(m['codigo_ibge'])
-    for m in municipios_raw
-}
+CIDADES_IBGE = {}
+for m in municipios_raw:
+    cod_uf = m["codigo_uf"]
+    nomes_uf = UF_POR_CODIGO.get(cod_uf, [])
+    for uf in (nomes_uf if isinstance(nomes_uf, list) else [nomes_uf]):
+        chave = f"{unicodedata.normalize('NFD', m['nome']).encode('ascii', 'ignore').decode().upper().strip()}-{uf}"
+        CIDADES_IBGE[chave] = str(m["codigo_ibge"])
 
+        
 # Função limpar_texto (mantemos)
 def limpar_texto(texto):
     texto = unicodedata.normalize("NFD", texto)
@@ -80,3 +108,9 @@ def buscar_codigo_municipio(texto_ocr):
 
     logger.error(f"[CodigoMunicipio] Município NÃO encontrado: '{municipio}-{uf}' extraído de '{texto_ocr}'")
     return ""
+
+
+
+UF_POR_CODIGO = {
+    42: ["SC", "SANTA CATARINA"]
+}

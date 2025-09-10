@@ -335,4 +335,12 @@ class ProfileModel(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+
+# modelo para persistir arquivos já processados e evitar duplicidades
+class FilesProccess(models.Model):
+    hash = models.CharField(max_length=64, unique=True)
+    filename = models.CharField(max_length=255)
+    proccess_data = models.DateTimeField(auto_now_add=True)
+
+
     
