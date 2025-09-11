@@ -299,15 +299,15 @@ class ExcelGenerator:
                 root = ET.fromstring(xml_str)
 
                 # busca com namespace
+                data_emissao = root.find(".//n:DataEmissao", ns)
                 numero = root.find(".//n:Numero", ns)
                 base_calculo = root.find(".//n:ValoresNfse/n:BaseCalculo", ns)
-                valor_iss = root.find(".//n:ValoresNfse/n:ValorIss", ns)
                 valor_total = root.find(".//n:Servico/n:Valores/n:ValorServicos", ns)
-                prestador_razao = root.find(".//n:PrestadorServico/n:RazaoSocial", ns)
+                valor_iss = root.find(".//n:ValoresNfse/n:ValorIss", ns)
                 prestador_cnpj = root.find(".//n:PrestadorServico/n:IdentificacaoPrestador/n:CpfCnpj/n:Cnpj", ns)
-                tomador_razao = root.find(".//n:Tomador/n:RazaoSocial", ns)
+                prestador_razao = root.find(".//n:PrestadorServico/n:RazaoSocial", ns)
                 tomador_cnpj = root.find(".//n:Tomador/n:IdentificacaoTomador/n:CpfCnpj/n:Cnpj", ns)
-                data_emissao = root.find(".//n:DataEmissao", ns)
+                tomador_razao = root.find(".//n:Tomador/n:RazaoSocial", ns)
                 valor_ir = root.find(".//n:Servico/n:Valores/n:ValorIr", ns)
                 valor_inss = root.find(".//n:Servico/n:Valores/n:ValorInss", ns)
                 valor_liquido = root.find(".//n:ValoresNfse/n:ValorLiquidoNfse", ns)
@@ -315,6 +315,7 @@ class ExcelGenerator:
                 valor_pis = root.find(".//n:Servico/n:Valores/n:ValorPis", ns)
                 valor_cofins = root.find(".//n:Servico/n:Valores/n:ValorCofins", ns)
                 item_lista_servico = root.find(".//n:Servico/n:ItemListaServico", ns)
+                descricao_servico = root.find(".//n:Servico/n:Discriminacao", ns)
                 codigo_municipio_prestador = root.find(".//n:PrestadorServico/n:Endereco/n:CodigoMunicipio", ns)
                 codigo_municipio_tomador = root.find(".//n:Tomador/n:Endereco/n:CodigoMunicipio", ns)
                 outras_retencoes = root.find(".//n:Servico/n:Valores/n:OutrasRetencoes", ns)
@@ -339,6 +340,7 @@ class ExcelGenerator:
                     "Valor PIS": valor_pis.text if valor_pis is not None else "",
                     "Valor COFINS": valor_cofins.text if valor_cofins is not None else "",
                     "Item Lista Serviço": item_lista_servico.text if item_lista_servico is not None else "",
+                    "Descricao Serviço": descricao_servico.text if descricao_servico is not None else "",
                     "Código Município Prestador": codigo_municipio_prestador.text if codigo_municipio_prestador is not None else "",
                     "Código Município Tomador": codigo_municipio_tomador.text if codigo_municipio_tomador is not None else "",
                     "Outras Retenções": outras_retencoes.text if outras_retencoes is not None else "",
