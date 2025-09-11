@@ -9,7 +9,7 @@ from lxml import etree
 from typing import Dict, Optional, List, Tuple
 import base64
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 import pandas as pd
 from dateutil.parser import parse
 import logging
@@ -323,6 +323,7 @@ class ExcelGenerator:
                 descontos_incondicionados = root.find(".//n:Servico/n:Valores/n:DescontoIncondicional", ns)
 
                 linhas.append({
+                    "Data Relatório": datetime.now(timezone.utc).astimezone().strftime("%d-%m-%Y %H:%M:%S"),
                     "Arquivo": nome_arquivo,
                     "Numero Nota": numero.text if numero is not None else "",
                     "Base de Cálculo": base_calculo.text if base_calculo is not None else "",
